@@ -241,6 +241,7 @@ Task(spec-reviewer) を起動:
 plan.md が完成しました。
 
 次のステップ:
-- 実装に進む場合は `/feature-spec:implement` を使用してください
+- 実装戦略を決める場合は `/feature-spec:strategy` を使用してください（PR分割・デリバリー順序の計画）
+- すぐに実装に進む場合は `/feature-spec:implement` を使用してください
 - 修正したい箇所がある場合は `/feature-spec:revise` を使用してください
 ```

@@ -440,14 +440,14 @@ function useReminder(memoId: string): {
 
 ## 実装タスク
 
-| # | タスク | 対象ファイル | 見積 | 状態 |
-|---|-------|------------|------|------|
-| 1 | DBスキーマにremindersテーブル追加 | `src/db/schema.ts` | S | - |
-| 2 | リマインダーAPI実装 | `src/api/reminders.ts`, `src/api/index.ts` | M | - |
-| 3 | 型定義追加 | `src/types/memo.ts`, `src/features/reminder/types.ts` | S | - |
-| 4 | useReminderフック実装 | `src/features/reminder/hooks/useReminder.ts` | S | - |
-| 5 | ReminderPicker, ReminderBadge実装 | `src/features/reminder/components/` | L | - |
-| 6 | MemoActions, MemoCardに統合 | `src/features/memo/components/` | M | - |
+| # | タスク | 対象ファイル | 見積 |
+|---|-------|------------|------|
+| 1 | DBスキーマにremindersテーブル追加 | `src/db/schema.ts` | S |
+| 2 | リマインダーAPI実装 | `src/api/reminders.ts`, `src/api/index.ts` | M |
+| 3 | 型定義追加 | `src/types/memo.ts`, `src/features/reminder/types.ts` | S |
+| 4 | useReminderフック実装 | `src/features/reminder/hooks/useReminder.ts` | S |
+| 5 | ReminderPicker, ReminderBadge実装 | `src/features/reminder/components/` | L |
+| 6 | MemoActions, MemoCardに統合 | `src/features/memo/components/` | M |
 
 ### 依存関係図
 
