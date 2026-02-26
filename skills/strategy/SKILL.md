@@ -11,12 +11,12 @@ metadata:
 plan.md の実装タスク表を分析し、**PR分割・デリバリー順序・リスク判断** をユーザーとの対話で決定する。
 plan（何を作るか）と implement（作る）の間にある「**どう分けて届けるか**」を担うフェーズ。
 
-入力: `docs/{feature-name}/plan.md`（実装タスク表が含まれていること）
-出力: `docs/{feature-name}/progress.md`（タスク進捗テーブル。multi-pr の場合はデリバリープランも含む）
+入力: `docs/plans/{feature-name}/plan.md`（実装タスク表が含まれていること）
+出力: `docs/plans/{feature-name}/progress.md`（タスク進捗テーブル。multi-pr の場合はデリバリープランも含む）
 
 **重要**: plan.md は **読み取り専用**。一切変更しない。
 
-**パスルール**: `docs/{feature-name}/` はカレントディレクトリ直下。`{feature-name}` は日本語のシンプルな名前（パス区切り不可）
+**パスルール**: `docs/plans/{feature-name}/` はカレントディレクトリ直下。`{feature-name}` は英語の kebab-case（例: `campaign-notification`）。パス区切り不可
 
 ## ワークフロー
 
@@ -34,7 +34,7 @@ Step 4: progress.md を新規作成（タスク進捗 + デリバリープラン
 スキル起動直後に、既存のドキュメントを読み込む:
 
 ```
-Glob docs/**/plan.md
+Glob docs/plans/**/plan.md
 ```
 
 $ARGUMENTS に feature-name が指定されている場合はそのディレクトリを使用。
@@ -42,17 +42,17 @@ plan.md が1つだけの場合はそのまま使用。
 
 複数の plan.md が見つかった場合は AskUserQuestion で選択させる:
 - 各 plan.md のパスと feature 名を選択肢として提示
-- 例: 「docs/ユーザー認証/plan.md」「docs/検索機能/plan.md」
+- 例: 「docs/plans/user-auth/plan.md」「docs/plans/search/plan.md」
 
 ```
-Read docs/{feature-name}/plan.md
+Read docs/plans/{feature-name}/plan.md
 ```
 
 plan.md が存在しない場合は「先に `/feature-spec:plan` で設計・実装計画を作成してください」と案内して終了する。
 
 plan.md の `status` が `planning` の場合は「plan.md がまだ作成中です。先に `/feature-spec:plan` を完了してください」と案内して終了する。
 
-既に `docs/{feature-name}/progress.md` が存在する場合は、その内容を表示し「progress.md を再作成しますか？」と確認する。
+既に `docs/plans/{feature-name}/progress.md` が存在する場合は、その内容を表示し「progress.md を再作成しますか？」と確認する。
 
 ---
 
@@ -138,7 +138,7 @@ plan.md を分析しました。
 
 ## Step 4: progress.md の作成
 
-ユーザーが方針を確定したら、`docs/{feature-name}/progress.md` を Write で新規作成する。
+ユーザーが方針を確定したら、`docs/plans/{feature-name}/progress.md` を Write で新規作成する。
 分割不要（single）の場合も、分割あり（multi-pr）の場合も、常に progress.md を作成する。
 
 **plan.md は一切変更しない**（読み取り専用）。
@@ -274,5 +274,5 @@ progress.md を作成しました。
 
 次のステップ:
 - 実装に進む場合は `/feature-spec:implement` を使用してください
-- 修正したい箇所がある場合は `/feature-spec:revise` を使用してください
+- plan.md を修正したい場合は直接編集してください
 ```

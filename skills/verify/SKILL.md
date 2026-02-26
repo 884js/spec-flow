@@ -11,10 +11,10 @@ metadata:
 実装コードからデータフローを抽出して実装サマリを生成し、plan.md との乖離を検出する。
 **code-researcher** エージェントでデータフロー抽出 → **implementation-verifier** エージェントで plan.md と双方向突合を行う。
 
-入力: `docs/{feature-name}/plan.md` + 実装コード（git diff or ファイル一覧）
+入力: `docs/plans/{feature-name}/plan.md` + 実装コード（git diff or ファイル一覧）
 出力: `implementation-summary.md` + 検証レポート + 次のアクション提示
 
-**パスルール**: `docs/{feature-name}/` はカレントディレクトリ直下。`{feature-name}` は日本語のシンプルな名前（パス区切り不可）
+**パスルール**: `docs/plans/{feature-name}/` はカレントディレクトリ直下。`{feature-name}` は英語の kebab-case（例: `campaign-notification`）。パス区切り不可
 
 ## ワークフロー
 
@@ -34,18 +34,18 @@ Step 5: 検証レポート生成 + 次のアクション提示
 スキル起動直後に、対象 feature を特定する:
 
 ```
-Glob docs/**/plan.md
+Glob docs/plans/**/plan.md
 ```
 
 $ARGUMENTS に feature-name が指定されている場合はそのディレクトリを使用。
 複数の仕様書ディレクトリがある場合はユーザーに選択を求める。
 
 ```
-Read docs/{feature-name}/plan.md
+Read docs/plans/{feature-name}/plan.md
 ```
 
 **progress.md の読み込み**（任意）:
-`docs/{feature-name}/progress.md` が存在する場合は Read し、完了タスクの情報を検証の参考とする。
+`docs/plans/{feature-name}/progress.md` が存在する場合は Read し、完了タスクの情報を検証の参考とする。
 
 **実装差分の取得**:
 ```
@@ -70,7 +70,7 @@ plan.md と実装差分を読み込みました:
 ## Step 1: 実装サマリの生成
 
 **code-researcher** エージェントに委譲し、実装コードからデータフローを抽出する。
-抽出結果を `docs/{feature-name}/implementation-summary.md` として Write する。
+抽出結果を `docs/plans/{feature-name}/implementation-summary.md` として Write する。
 
 ### 1-1: データフローの抽出
 
@@ -94,7 +94,7 @@ Task(code-researcher) を起動:
 
 ### 1-2: 実装サマリの生成
 
-code-researcher の出力を整形し、`docs/{feature-name}/implementation-summary.md` を Write する。
+code-researcher の出力を整形し、`docs/plans/{feature-name}/implementation-summary.md` を Write する。
 
 **テンプレート**:
 
@@ -136,8 +136,8 @@ plan.md に存在するドメインセクションに応じて、以下を並列
 ```
 Task(implementation-verifier) を起動:
   プロンプト: 「バックエンド仕様の突合検証を行ってください。
-  仕様書: docs/{feature-name}/plan.md の「バックエンド変更」セクションを参照
-  実装サマリ: docs/{feature-name}/implementation-summary.md を Read して参照
+  仕様書: docs/plans/{feature-name}/plan.md の「バックエンド変更」セクションを参照
+  実装サマリ: docs/plans/{feature-name}/implementation-summary.md を Read して参照
   チェック観点: API
   実装ファイル: {plan.md のバックエンド変更セクションに記載されたファイル一覧}
   検証方向:
@@ -156,8 +156,8 @@ Task(implementation-verifier) を起動:
 ```
 Task(implementation-verifier) を起動:
   プロンプト: 「DB仕様の突合検証を行ってください。
-  仕様書: docs/{feature-name}/plan.md の「DB変更」セクションを参照
-  実装サマリ: docs/{feature-name}/implementation-summary.md を Read して参照
+  仕様書: docs/plans/{feature-name}/plan.md の「DB変更」セクションを参照
+  実装サマリ: docs/plans/{feature-name}/implementation-summary.md を Read して参照
   チェック観点: DB
   実装ファイル: {plan.md のDB変更セクションに記載されたファイル一覧}
   検証方向:
@@ -176,8 +176,8 @@ Task(implementation-verifier) を起動:
 ```
 Task(implementation-verifier) を起動:
   プロンプト: 「フロントエンド仕様の突合検証を行ってください。
-  仕様書: docs/{feature-name}/plan.md の「フロントエンド変更」セクションを参照
-  実装サマリ: docs/{feature-name}/implementation-summary.md を Read して参照
+  仕様書: docs/plans/{feature-name}/plan.md の「フロントエンド変更」セクションを参照
+  実装サマリ: docs/plans/{feature-name}/implementation-summary.md を Read して参照
   チェック観点: フロントエンド
   実装ファイル: {plan.md のフロントエンド変更セクションに記載されたファイル一覧}
   検証方向:
@@ -272,8 +272,8 @@ Step 1〜4 の結果を統合し、最終判定を行う。
 - **PASS の場合**: 「検証完了。PR作成/更新に進めます。」
 - **PARTIAL の場合**:
   - 実装修正が必要 → 「以下の項目を修正してください: {修正項目}」
-  - 仕様修正が必要 → 「`/feature-spec:revise` で仕様を修正してください」
+  - 仕様修正が必要 → 「plan.md を直接編集して仕様を修正してください」
 - **NEEDS_FIX の場合**:
   - 実装漏れ（仕様→実装） → 「以下の実装が不足しています: {不足項目}」
-  - 仕様不足（実装→仕様） → 「`/feature-spec:revise` で仕様を更新してください」
+  - 仕様不足（実装→仕様） → 「plan.md を直接編集して仕様を更新してください」
   - 型不一致/ロジック差異 → 「仕様と実装に差異があります。どちらに合わせるか確認してください。」

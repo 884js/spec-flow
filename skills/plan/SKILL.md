@@ -12,13 +12,12 @@ metadata:
 対話で要件を確認しつつ、技術設計はモデルが一気に生成 → ユーザーレビューの「ハイブリッド」方式。
 
 入力: ユーザーの要求（$ARGUMENTS または対話）
-出力: `docs/{feature-name}/plan.md`（全情報を統合した1ファイル）+ `project-context.md`
+出力: `docs/plans/{feature-name}/plan.md`（全情報を統合した1ファイル）+ `project-context.md`
 
 **出力先ルール**:
-- `docs/{feature-name}/` は **カレントディレクトリ直下** に作成する
-- `{feature-name}` は **日本語のシンプルな名前**（例: `キャンペーン通知`）。パス区切り不可
+- `docs/plans/{feature-name}/` は **カレントディレクトリ直下** に作成する
+- `{feature-name}` は **英語の kebab-case**（例: `campaign-notification`, `user-auth`）。パス区切り不可
 
-plan.md 完成後の修正は `/feature-spec:revise` で行う。
 
 ## ワークフロー
 
@@ -75,7 +74,7 @@ Phase 2: {機能名B}（{概要}）← Phase 1 に依存
 分割して進めますか？それとも1つの機能として進めますか？
 ```
 
-分割する場合は Phase ごとに個別の `docs/{feature-name}/` を作成する。
+分割する場合は Phase ごとに個別の `docs/plans/{feature-name}/` を作成する。
 
 ---
 
@@ -141,14 +140,14 @@ Task(git-analyzer) を起動:
 - テスト/ビルドコマンド: {commands}
 ```
 
-context-collector の出力を `docs/{feature-name}/project-context.md` として Write。
+context-collector の出力を `docs/plans/{feature-name}/project-context.md` として Write。
 
 ### 2-e. 並行開発チェック
 
 `docs/` 配下に他の機能の仕様書がないか確認:
 
 ```
-Glob docs/**/plan.md
+Glob docs/plans/**/plan.md
 ```
 
 他の仕様書が存在する場合:
@@ -205,7 +204,7 @@ Step 1〜3 で確定した内容を **spec-writer** に委譲して生成:
 
 ```
 Task(spec-writer) を起動:
-  プロンプト: 「docs/{feature-name}/plan.md を生成。種別: plan
+  プロンプト: 「docs/plans/{feature-name}/plan.md を生成。種別: plan
   プロジェクト規約: {project-context.md の要約}
   設計内容:
     概要: {Step 1 で確定した要件}
@@ -226,7 +225,7 @@ Task(spec-writer) を起動:
 
 ```
 Task(spec-reviewer) を起動:
-  プロンプト: 「docs/{feature-name}/plan.md を読み込み、
+  プロンプト: 「docs/plans/{feature-name}/plan.md を読み込み、
   セクション間の整合性（データフロー↔API設計↔DB設計↔フロントエンド設計↔実装タスク）、
   型定義の一致、テスト網羅性をレビューしてください。」
 ```
@@ -243,5 +242,4 @@ plan.md が完成しました。
 次のステップ:
 - 実装戦略を決める場合は `/feature-spec:strategy` を使用してください（PR分割・デリバリー順序の計画）
 - すぐに実装に進む場合は `/feature-spec:implement` を使用してください
-- 修正したい箇所がある場合は `/feature-spec:revise` を使用してください
 ```
