@@ -1,6 +1,6 @@
 ---
 name: plan
-description: "Use when starting a new feature spec. Invoke for requirements hearing, technical design, and implementation planning — all in one command. Generates a unified plan.md covering requirements, API/DB/frontend design, tasks, and test strategy. 仕様書作成, 要件定義, 設計, 実装計画."
+description: "Use when starting a new feature spec or plan. Invoke for requirements hearing, technical design, and implementation planning — all in one command. Generates a unified plan.md covering requirements, API/DB/frontend design, tasks, and test strategy. Triggers: create spec, new spec, plan, design, requirements, 仕様書作成, 要件定義, 概要設計, 詳細設計, 実装計画, タスク分解."
 allowed-tools: Read, Glob, Grep, Write, Edit, Task, Bash
 metadata:
   triggers: create spec, new spec, requirements, plan, design, 仕様書作成, 要件定義, 概要設計, 詳細設計, 実装計画, タスク分解
@@ -86,10 +86,8 @@ Phase 2: {機能名B}（{概要}）← Phase 1 に依存
 
 #### 2-a. コンテキスト自動収集
 
-**context-collector** エージェントにプロジェクト全体の調査を委譲。
-
 ```
-Task(context-collector) を起動:
+Task(subagent_type: Explore) — context-collector:
   プロンプト: 「このプロジェクトのコンテキストを収集してください。
   CLAUDE.md、ディレクトリ構造、package.json、型定義、DBスキーマ、
   既存仕様書を調査し、構造化された要約を返してください。
@@ -100,10 +98,8 @@ Task(context-collector) を起動:
 
 #### 2-b. コード調査
 
-**code-researcher** エージェントに技術パターンの調査を委譲。
-
 ```
-Task(code-researcher) を起動:
+Task(subagent_type: Explore) — code-researcher:
   プロンプト: 「このプロジェクトの技術パターンを調査してください。
   - バックエンド: API ルーティング、ハンドラ、型定義、エラーハンドリング、バリデーション、データフローパターン
   - DB: スキーマ定義、マイグレーション、テーブル構造、リレーション、ID生成
@@ -114,10 +110,8 @@ Task(code-researcher) を起動:
 
 #### 2-c. Git 履歴分析
 
-**git-analyzer** エージェントに Git 履歴の調査を委譲。
-
 ```
-Task(git-analyzer) を起動:
+Task(subagent_type: general-purpose) — git-analyzer:
   プロンプト: 「このプロジェクトの Git 履歴を分析してください。
   機能概要: {Step 1 で把握した機能概要}
   以下を調査してください:
@@ -125,6 +119,8 @@ Task(git-analyzer) を起動:
   - ホットスポット（直近3ヶ月で活発に変更されているファイル）
   - 最近のリファクタリング（大規模変更）
   - 並行開発リスク（同じファイルを複数人が変更していないか）」
+
+  ※ git コマンドの実行が必要なため general-purpose を使用
 ```
 
 ### 2-d. 結果の提示
@@ -177,12 +173,13 @@ Glob docs/plans/**/plan.md
 
 ### 3-b. 設計案の一括提示
 
-**context-collector で把握した既存パターン・命名規則に従って** 、以下を一度に提示する:
+**context-collector で把握した既存パターン・命名規則に従って** 、以下を一度に提示する。
+出力形式は [templates/plan.md](templates/plan.md) の各セクションに準拠すること。
 
-1. **データフロー**: メインユースケースのシーケンス図
-2. **バックエンド設計**: エンドポイント一覧、主要な型定義、エラーケース
-3. **DB設計**: テーブル構造、リレーション、モデルコード
-4. **フロントエンド設計**: コンポーネントツリー、主要Props、ワイヤーフレーム
+1. **データフロー**: Mermaid `sequenceDiagram` 形式でメインユースケースを記述
+2. **バックエンド設計**: エンドポイント一覧（テーブル形式）、主要な型定義（コードブロック）、エラーケース（テーブル形式）
+3. **DB設計**: テーブル構造（カラム定義テーブル）、リレーション（箇条書き）
+4. **フロントエンド設計**: コンポーネントツリー（ASCII ツリー）、主要Props、ワイヤーフレーム（ASCII アート）
 
 → 「設計案を確認してください。修正したい箇所があれば指摘してください。」
 
@@ -198,11 +195,13 @@ Glob docs/plans/**/plan.md
 
 ### 4-a. plan.md 生成
 
-Step 1〜3 で確定した内容を **spec-writer** に委譲して生成:
+Step 1〜3 で確定した内容を spec-writer に委譲して生成する。
+**出力形式は [templates/plan.md](templates/plan.md) に従うこと。**
 
 ```
-Task(spec-writer) を起動:
-  プロンプト: 「docs/plans/{feature-name}/plan.md を生成。種別: plan
+Task(subagent_type: general-purpose) — spec-writer:
+  プロンプト: 「docs/plans/{feature-name}/plan.md を生成してください。
+  テンプレート: {このスキルの templates/plan.md の内容}
   プロジェクト規約: {context-collector の要約}
   設計内容:
     概要: {Step 1 で確定した要件}
@@ -214,18 +213,27 @@ Task(spec-writer) を起動:
     フロントエンド: {Step 3 で確定したフロントエンド設計}
     影響範囲: {Step 3 で把握した影響}
     実装タスク: {依存関係付きタスク一覧}
-    テスト方針: {テスト一覧・チェックリスト・ビルドコマンド}」
+    テスト方針: {テスト一覧・チェックリスト・ビルドコマンド}
+  注意:
+  - テンプレートのセクション構造を必ず守ること（後続スキルが依存している）
+  - 省略判定で不要なドメインセクションはセクション自体を省略
+  - frontmatter の status は done にすること」
 ```
 
 ### 4-b. 品質レビュー
 
-**spec-reviewer** エージェントで plan.md 内のセクション間整合性をチェック。
+spec-reviewer で plan.md 内のセクション間整合性をチェック。
 
 ```
-Task(spec-reviewer) を起動:
+Task(subagent_type: general-purpose) — spec-reviewer:
   プロンプト: 「docs/plans/{feature-name}/plan.md を読み込み、
   セクション間の整合性（データフロー↔API設計↔DB設計↔フロントエンド設計↔実装タスク）、
-  型定義の一致、テスト網羅性をレビューしてください。」
+  型定義の一致、テスト網羅性をレビューしてください。
+  また、テンプレート構造に準拠しているか確認してください:
+  - frontmatter に title, feature-name, status, created, updated があるか
+  - 実装タスク表に #, タスク, 対象ファイル, 見積, 依存 の列があるか
+  - ビルド確認セクションにコマンドが記載されているか
+  - 手動検証チェックリストが存在するか」
 ```
 
 **結果の処理**:
