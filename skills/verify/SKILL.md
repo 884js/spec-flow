@@ -1,7 +1,6 @@
 ---
 name: verify
-description: "Use after implementation to verify code matches spec. Invoke for acceptance criteria check, file structure comparison, and domain-specific spec verification against plan.md. 仕様検証, 実装確認, 受入条件チェック."
-allowed-tools: Read, Write, Glob, Grep, Task, Bash
+description: "実装コードが plan.md の仕様通りか検証する。実装完了後の受入条件チェック、ファイル構成比較、ドメイン別の仕様突合に使用。/implement 完了後や PR 作成前に呼び出す。verify, 仕様検証, 実装確認, 受入条件チェック, check spec, validate implementation."
 metadata:
   triggers: verify, check spec, validate implementation, 仕様検証, 実装確認, 受入条件チェック
 ---
