@@ -103,7 +103,7 @@ Glob docs/plans/{feature-name}/troubleshoot-*.md
 3. spec-reviewer で整合性チェック:
 
    ```
-   Task(spec-reviewer) を起動:
+   Task(subagent_type: spec-reviewer):
      プロンプト: 「docs/plans/{feature-name}/plan.md を読み込み、
      セクション間の整合性（データフロー↔API設計↔DB設計↔フロントエンド設計↔実装タスク）、
      型定義の一致、テスト網羅性をレビューしてください。」
@@ -130,7 +130,7 @@ progress.md のタスク進捗テーブルから完了/進行中/未着手を集
 
 **再開フロー**:
 
-1. Task(git-analyzer) でブランチの実態を調査:
+1. Task(subagent_type: git-analyzer):
    プロンプト:
    「ブランチの実装状態を調査し、progress.md と突合してください。
    progress.md: docs/plans/{feature-name}/progress.md
@@ -232,7 +232,7 @@ progress.md のタスク進捗テーブルに **PR 列** がある場合:
 
 1. progress.md の状態列を `→` に更新
 
-2. Task(code-researcher) を起動:
+2. Task(subagent_type: code-researcher):
    プロンプト:
    「タスク #{N}（{タスク名}）の実装に必要な情報を収集してください。
    仕様書: docs/plans/{feature-name}/plan.md の該当セクション

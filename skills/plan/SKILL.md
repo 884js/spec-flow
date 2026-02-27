@@ -84,7 +84,7 @@ Phase 2: {機能名B}（{概要}）← Phase 1 に依存
 #### 2-a. コンテキスト自動収集
 
 ```
-Task(subagent_type: Explore) — context-collector:
+Task(subagent_type: context-collector):
   プロンプト: 「このプロジェクトのコンテキストを収集してください。
   CLAUDE.md、ディレクトリ構造、package.json、型定義、DBスキーマ、
   既存仕様書を調査し、構造化された要約を返してください。
@@ -96,7 +96,7 @@ Task(subagent_type: Explore) — context-collector:
 #### 2-b. コード調査
 
 ```
-Task(subagent_type: Explore) — code-researcher:
+Task(subagent_type: code-researcher):
   プロンプト: 「このプロジェクトの技術パターンを調査してください。
   - バックエンド: API ルーティング、ハンドラ、型定義、エラーハンドリング、バリデーション、データフローパターン
   - DB: スキーマ定義、マイグレーション、テーブル構造、リレーション、ID生成
@@ -108,7 +108,7 @@ Task(subagent_type: Explore) — code-researcher:
 #### 2-c. Git 履歴分析
 
 ```
-Task(subagent_type: general-purpose) — git-analyzer:
+Task(subagent_type: git-analyzer):
   プロンプト: 「このプロジェクトの Git 履歴を分析してください。
   機能概要: {Step 1 で把握した機能概要}
   以下を調査してください:
@@ -116,8 +116,6 @@ Task(subagent_type: general-purpose) — git-analyzer:
   - ホットスポット（直近3ヶ月で活発に変更されているファイル）
   - 最近のリファクタリング（大規模変更）
   - 並行開発リスク（同じファイルを複数人が変更していないか）」
-
-  ※ git コマンドの実行が必要なため general-purpose を使用
 ```
 
 ### 2-d. 並行開発チェック
@@ -191,7 +189,7 @@ Step 1〜3 で確定した内容を spec-writer に委譲して生成する。
 **テンプレート準備**: まず `templates/plan.md` を Read し、その内容を spec-writer のプロンプトに含める。
 
 ```
-Task(subagent_type: general-purpose) — spec-writer:
+Task(subagent_type: spec-writer):
   プロンプト: 「docs/plans/{feature-name}/plan.md を生成してください。
   テンプレート: {Read した templates/plan.md の全文}
   プロジェクト規約: {context-collector の要約}
@@ -222,7 +220,7 @@ Task(subagent_type: general-purpose) — spec-writer:
 spec-reviewer で plan.md 内のセクション間整合性をチェック。
 
 ```
-Task(subagent_type: general-purpose) — spec-reviewer:
+Task(subagent_type: spec-reviewer):
   プロンプト: 「docs/plans/{feature-name}/plan.md を読み込み、以下を全てチェックしてください。
 
   【テンプレート構造】

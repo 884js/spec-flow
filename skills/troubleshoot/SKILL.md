@@ -100,7 +100,7 @@ AskUserQuestion でパターン判定結果を確認:
 ### 2-a. コードパスの調査（サブエージェント委譲）
 
 ```
-Task(subagent_type: Explore) — code-researcher:
+Task(subagent_type: code-researcher):
   「以下の機能の実行フローを、エントリポイントから最終出力まで
   コードを追って完全にトレースしてください。
 
