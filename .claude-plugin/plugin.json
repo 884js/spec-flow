@@ -8,6 +8,7 @@
     "./agents/git-analyzer.md",
     "./agents/spec-reviewer.md",
     "./agents/spec-writer/spec-writer.md",
-    "./agents/implementation-verifier.md"
+    "./agents/implementation-verifier.md",
+    "./agents/library-researcher.md"
   ]
 }
