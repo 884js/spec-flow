@@ -1,7 +1,12 @@
 {
-  "name": "feature-spec",
-  "description": "既存システムへの機能追加仕様書を対話的に生成するプラグイン",
+  "name": "spec-flow",
+  "description": "既存システムへの機能追加仕様書を対話的に生成し、実装・検証まで支援するプラグイン",
   "version": "2.0.0",
+  "author": {
+    "name": "884js"
+  },
+  "repository": "https://github.com/884js/spec-flow",
+  "license": "MIT",
   "agents": [
     "./agents/context-collector.md",
     "./agents/code-researcher.md",
