@@ -5,506 +5,238 @@
 ```markdown
 ---
 title: "feat: リマインダー機能"
-status: ready
-date: 2025-01-15
+feature-name: "reminder"
+status: done
+created: 2025-01-15
+updated: 2025-01-15
 ---
 
 # リマインダー機能
 
 ## 概要
 
-メモに日時指定のリマインダーを設定し、プッシュ通知で知らせる機能を追加する。
-ユーザーがメモを書いても見返すタイミングを逃してしまう問題を解決し、指定した日時に通知を受け取ってメモを確認できるようにする。
-
-**ユーザーストーリー**:
-- As a メモ利用者, I want メモにリマインダーを設定したい, so that 指定した日時に通知を受け取り、メモを見返せる
-- As a メモ利用者, I want 設定済みリマインダーを一覧で確認したい, so that 今後のリマインダーを管理できる
-
-## 課題と背景
-
-**現状**: ユーザーがメモを書いても、見返すタイミングを逃してしまう。「後で確認する」メモが埋もれていくのが課題。
-
-**目指す状態**: メモに日時を指定してリマインダーを設定でき、指定日時にプッシュ通知が届く。通知タップでメモ詳細に遷移できる。
+メモ利用者が、メモにリマインダーを設定し、指定した日時にプッシュ通知を受け取ってメモを見返せるようにする。メモを書いても見返すタイミングを逃してしまう課題を解決する。
 
 ## 受入条件
 
-- [ ] メモ編集画面からリマインダー日時を設定できる
-- [ ] 設定した日時にプッシュ通知が届く
-- [ ] 通知をタップするとメモの詳細画面に遷移する
-- [ ] リマインダー設定済みのメモにバッジが表示される
-- [ ] リマインダーの変更・削除ができる
+- [ ] AC-1: メモ編集画面からリマインダー日時を設定できる
+- [ ] AC-2: 設定した日時にプッシュ通知が届く
+- [ ] AC-3: 通知をタップするとメモの詳細画面に遷移する
+- [ ] AC-4: リマインダー設定済みのメモにバッジが表示される
+- [ ] AC-5: リマインダーの変更・削除ができる
 
 ## スコープ
 
-### 対象
+### やること
 
 - 単発リマインダー（1回限り）
 - プッシュ通知（ブラウザ Notification API）
 - メモ詳細画面からのリマインダー設定
 
-### 対象外
+### やらないこと
 
 - 繰り返しリマインダー（毎日、毎週等）
 - メール通知
 - リマインダー一覧専用画面
 
-## 提案する解決策
+## 非機能要件
 
-### データフロー
+- 認可: メモの所有者のみリマインダーを操作可能
+- リマインダー日時は未来の日時のみ許可
 
-#### リマインダー設定フロー
+## データフロー
 
-\`\`\`mermaid
+### リマインダー設定フロー
+
+```mermaid
 sequenceDiagram
     participant User
-    participant MemoEditor
-    participant API as /api/reminders
+    participant UI as メモ編集画面
+    participant Server
     participant DB
-    participant Scheduler
+    participant Scheduler as スケジューラ
 
-    User->>MemoEditor: リマインダーアイコンタップ
-    MemoEditor->>MemoEditor: DateTimePicker表示
-    User->>MemoEditor: 日時選択 + 確定
-    MemoEditor->>API: POST /api/reminders
-    API->>DB: INSERT INTO reminders
-    DB-->>API: reminder record
-    API-->>MemoEditor: 201 Created
-    MemoEditor-->>User: バッジ表示
+    User->>UI: リマインダーアイコンタップ
+    UI->>UI: 日時選択UIを表示
+    User->>UI: 日時選択して確定
+    UI->>Server: リマインダー作成リクエスト
+    Server->>DB: リマインダーデータを保存
+    DB-->>Server: 保存結果
+    Server-->>UI: 作成成功レスポンス
+    UI-->>User: バッジ表示
 
     Note over Scheduler: 指定日時到達
-    Scheduler->>API: トリガー
-    API->>User: Push Notification
-    User->>MemoEditor: 通知タップ → メモ詳細画面
-\`\`\`
+    Scheduler->>Server: 通知トリガー
+    Server->>User: プッシュ通知送信
+    User->>UI: 通知タップでメモ詳細画面に遷移
+```
 
-### バックエンド変更
+## バックエンド変更
 
-#### エンドポイント一覧
+### API設計
 
-| メソッド | パス | 説明 |
-|---------|------|------|
-| POST | /api/reminders | リマインダー作成 |
-| GET | /api/memos/:memoId/reminder | メモのリマインダー取得 |
-| PATCH | /api/reminders/:id | リマインダー更新 |
-| DELETE | /api/reminders/:id | リマインダー削除 |
+- リマインダーのCRUD操作を提供（作成・取得・更新・削除）
+- 作成時の入力: 対象メモの識別子、リマインダー日時
+- 取得時の出力: リマインダーの識別子、対象メモ、日時、状態（待機中/送信済み/キャンセル）
+- 主要なエラーケース:
+  - 過去の日時を指定した場合 → バリデーションエラー
+  - 存在しないメモを指定した場合 → 対象なしエラー
+  - 同一メモに重複してリマインダーを設定した場合 → 競合エラー
 
-#### エンドポイント詳細
-
-##### `POST /api/reminders`
+### 対象ファイル
 
-**リクエスト:**
+- 新規: `src/api/reminders.ts` — リマインダーAPI実装
+- 変更: `src/api/index.ts` — ルーティングにリマインダーAPIを追加
 
-\`\`\`typescript
-interface CreateReminderRequest {
-  memoId: string;
-  remindAt: string; // ISO 8601 datetime
-}
-\`\`\`
+## DB変更
 
-**レスポンス (201):**
+### データモデル
 
-\`\`\`typescript
-interface ReminderResponse {
-  id: string;
-  memoId: string;
-  remindAt: string;
-  status: 'pending' | 'sent' | 'cancelled';
-  createdAt: string;
-}
-\`\`\`
-
-**認証・認可:**
-- 認証: 必要（既存の認証ミドルウェア）
-- 認可: メモの所有者のみ
-
-**バリデーション:**
-
-| フィールド | ルール | エラーメッセージ |
-|-----------|--------|---------------|
-| memoId | 必須、存在するメモのID | メモが見つかりません |
-| remindAt | 必須、ISO 8601形式、未来の日時 | 未来の日時を指定してください |
-
-**エラー:**
-
-| ステータス | コード | 説明 | 条件 |
-|----------|--------|------|------|
-| 400 | INVALID_DATE | 日時が不正 | 過去の日時を指定した場合 |
-| 404 | MEMO_NOT_FOUND | メモが存在しない | memoIdが無効 |
-| 409 | REMINDER_EXISTS | リマインダーが既に存在 | 同一メモに重複設定 |
-
-##### `GET /api/memos/:memoId/reminder`
-
-**レスポンス (200):**
-
-\`\`\`typescript
-interface GetReminderResponse {
-  reminder: ReminderResponse | null;
-}
-\`\`\`
-
-##### `PATCH /api/reminders/:id`
-
-**リクエスト:**
-
-\`\`\`typescript
-interface UpdateReminderRequest {
-  remindAt: string; // ISO 8601 datetime
-}
-\`\`\`
-
-**レスポンス (200):** `ReminderResponse`
-
-##### `DELETE /api/reminders/:id`
-
-**レスポンス:** 204 No Content
-
-#### 内部処理フロー
-
-##### `POST /api/reminders` の処理ステップ
-
-1. リクエストボディのバリデーション（memoId, remindAt）
-2. remindAt が未来日時であることを検証
-3. memoId に対応するメモの存在確認
-4. 既存リマインダーの重複チェック
-5. reminders テーブルに INSERT
-6. ReminderResponse を構築して返却
-
-### DB変更
-
-#### ER図
-
-\`\`\`mermaid
-erDiagram
-    memos ||--o| reminders : has
-    memos {
-        string id PK
-        string content
-        integer created_at
-    }
-    reminders {
-        string id PK
-        string memo_id FK
-        integer remind_at
-        string status
-        integer created_at
-    }
-\`\`\`
-
-#### テーブル定義
-
-##### 新規テーブル: reminders
-
-| カラム | 型 | 制約 | 説明 |
-|-------|-----|------|------|
-| id | TEXT | PK | 主キー（CUID） |
-| memo_id | TEXT | NOT NULL, FK(memos.id) | 対象メモ |
-| remind_at | INTEGER | NOT NULL | リマインダー日時（Unix timestamp） |
-| status | TEXT | NOT NULL, DEFAULT 'pending' | pending / sent / cancelled |
-| created_at | INTEGER | NOT NULL | 作成日時（Unix timestamp） |
-
-#### モデルコード
-
-\`\`\`typescript
-// src/db/schema.ts への追加
-export const reminders = sqliteTable('reminders', {
-  id: text('id').primaryKey(),
-  memoId: text('memo_id').notNull().references(() => memos.id, { onDelete: 'cascade' }),
-  remindAt: integer('remind_at', { mode: 'timestamp' }).notNull(),
-  status: text('status', { enum: ['pending', 'sent', 'cancelled'] }).notNull().default('pending'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
-\`\`\`
-
-#### マイグレーション
-
-\`\`\`sql
-CREATE TABLE reminders (
-  id TEXT PRIMARY KEY,
-  memo_id TEXT NOT NULL REFERENCES memos(id) ON DELETE CASCADE,
-  remind_at INTEGER NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  created_at INTEGER NOT NULL
-);
-
-CREATE INDEX idx_reminders_remind_at ON reminders(remind_at) WHERE status = 'pending';
-CREATE INDEX idx_reminders_memo_id ON reminders(memo_id);
-\`\`\`
-
-#### インデックス
-
-| テーブル | カラム | 種別 | 目的 |
-|---------|-------|------|------|
-| reminders | remind_at | 部分（status='pending'） | スケジューラの検索高速化 |
-| reminders | memo_id | 通常 | メモ→リマインダーの参照高速化 |
-
-#### 型定義の変更
-
-\`\`\`typescript
-// src/types/memo.ts への変更
-
-// Before:
-interface Memo {
-  id: string;
-  content: string;
-  createdAt: string;
-}
-
-// After:
-interface Memo {
-  id: string;
-  content: string;
-  createdAt: string;
-  reminder?: Reminder;  // 追加
-}
-
-interface Reminder {
-  id: string;
-  memoId: string;
-  remindAt: string;
-  status: 'pending' | 'sent' | 'cancelled';
-}
-\`\`\`
-
-#### 設計決定事項
-
-| 決定事項 | 理由 |
-|---------|------|
-| 1:1リレーション（memos → reminders） | スコープが単発リマインダーのみ。将来複数対応時にN:1に変更可 |
-| statusカラムをenumで管理 | 通知の状態管理が必要。pending/sent/cancelledの3状態 |
-| 部分インデックス（status='pending'） | スケジューラはpendingのみ検索するため |
-
-### フロントエンド変更
-
-#### コンポーネントツリー
-
-\`\`\`mermaid
-graph TD
-    A[MemoDetailPage] --> B[MemoEditor]
-    A --> C[MemoActions]
-    C --> D[ReminderButton]
-    D --> E[ReminderPicker]
-    E --> F[DateTimePicker]
-    B --> G[ReminderBadge]
-\`\`\`
-
-#### 新規コンポーネント
-
-##### `ReminderPicker`
-
-**パス**: `src/features/reminder/components/ReminderPicker.tsx`
-
-**役割**: リマインダーの日時を選択するポップオーバーUI
-
-**Props:**
-
-\`\`\`typescript
-interface ReminderPickerProps {
-  memoId: string;
-  currentReminder?: Reminder;
-  onSet: (remindAt: Date) => void;
-  onCancel: () => void;
-}
-\`\`\`
-
-**状態管理:**
-
-\`\`\`typescript
-const [selectedDate, setSelectedDate] = useState<Date>(
-  currentReminder ? new Date(currentReminder.remindAt) : addHours(new Date(), 1)
-);
-\`\`\`
-
-**イベントハンドラ:**
-
-\`\`\`typescript
-const handleConfirm = async () => {
-  // 1. selectedDate が未来日時か検証
-  // 2. onSet(selectedDate) を呼び出し
-};
-\`\`\`
-
-**UIワイヤーフレーム:**
-
-\`\`\`
-┌──────────────────────────────┐
-│ リマインダーを設定     [×]    │
-├──────────────────────────────┤
-│                              │
-│  📅 2025/01/15               │
-│  🕐 14:00                    │
-│                              │
-│  ┌──────────┐ ┌──────────┐  │
-│  │ キャンセル │ │   設定   │  │
-│  └──────────┘ └──────────┘  │
-└──────────────────────────────┘
-\`\`\`
-
-##### `ReminderBadge`
-
-**パス**: `src/features/reminder/components/ReminderBadge.tsx`
-
-**役割**: リマインダー設定済みメモにバッジを表示
-
-**Props:**
-
-\`\`\`typescript
-interface ReminderBadgeProps {
-  reminder: Reminder;
-  size?: 'sm' | 'md';
-}
-\`\`\`
-
-**UIワイヤーフレーム:**
-
-\`\`\`
-[🔔 1/15 14:00]    // size="md"
-[🔔]               // size="sm"
-\`\`\`
-
-#### Hooks
-
-##### `useReminder`
-
-**パス**: `src/features/reminder/hooks/useReminder.ts`
-
-\`\`\`typescript
-function useReminder(memoId: string): {
-  reminder: Reminder | undefined;
-  isLoading: boolean;
-  error: Error | null;
-  createReminder: (remindAt: Date) => Promise<void>;
-  updateReminder: (id: string, remindAt: Date) => Promise<void>;
-  deleteReminder: (id: string) => Promise<void>;
-}
-\`\`\`
-
-#### 既存コンポーネントの変更
-
-| ファイル | 変更箇所 | 変更内容 |
-|---------|---------|---------|
-| `src/features/memo/components/MemoActions.tsx` | JSX return内（L45付近） | `ReminderButton` コンポーネントを追加 |
-| `src/features/memo/components/MemoCard.tsx` | タイトル横（L28付近） | `ReminderBadge` を追加表示 |
-
-**パターン参照**: 「既存の `BookmarkButton`（`src/features/memo/components/MemoActions.tsx` L32）のパターンに倣う」
-
-#### エッジケース
-
-| ケース | 対応 |
-|-------|------|
-| リマインダー未設定 | ReminderBadge非表示、ReminderButtonは「設定」ラベル |
-| 過去の日時を選択 | バリデーションエラー表示、設定ボタン無効化 |
-| API通信エラー | トースト通知でエラー表示、リトライ可能 |
+#### リマインダーテーブル
+
+- 目的: メモに紐づくリマインダー情報を管理する
+- 関係: メモテーブルと1対1の関係。メモ削除時にリマインダーも連動して削除
+
+| カラム | 説明 | 制約 |
+|--------|------|------|
+| 識別子 | リマインダーを一意に識別する値 | 必須、主キー |
+| 対象メモ | リマインダーが紐づくメモ | 必須、メモテーブルへの外部キー |
+| リマインダー日時 | 通知を送信する日時 | 必須 |
+| 状態 | 待機中・送信済み・キャンセルの3状態 | 必須、初期値は「待機中」 |
+| 作成日時 | レコードが作成された日時 | 必須 |
+
+- 待機中のリマインダーのみを効率的に検索できるようにする（スケジューラの検索高速化）
+- メモからリマインダーを参照する検索を高速化する
+
+### 対象ファイル
+
+- 変更: `src/db/schema.ts` — リマインダーテーブル定義を追加
+- 新規: マイグレーションファイル — テーブル作成とインデックス追加
+
+## フロントエンド変更
+
+### 画面・UI設計
+
+- メモ詳細画面のアクションバーに「リマインダー設定」ボタンを追加
+- ボタンタップで日時選択ポップオーバーを表示
+- 日時選択後、確定でリマインダーを設定
+- リマインダー設定済みのメモにはバッジ（日時表示付き）を表示
+- 既存の「ブックマーク」ボタンと同じパターンで実装
+
+### ワイヤーフレーム
+
+#### リマインダー設定ポップオーバー
+
+```
++------------------------------+
+| リマインダーを設定     [x]    |
++------------------------------+
+|                              |
+|  日付: 2025/01/15            |
+|  時刻: 14:00                 |
+|                              |
+|  [キャンセル]     [設定]      |
++------------------------------+
+```
+
+#### リマインダーバッジ
+
+```
+[bell 1/15 14:00]    // 通常サイズ
+[bell]               // 小サイズ
+```
+
+### 対象ファイル
+
+- 新規: `src/features/reminder/components/ReminderPicker.tsx` — 日時選択ポップオーバー
+- 新規: `src/features/reminder/components/ReminderBadge.tsx` — バッジ表示
+- 新規: `src/features/reminder/hooks/useReminder.ts` — リマインダーのデータ取得・操作フック
+- 変更: `src/features/memo/components/MemoActions.tsx` — アクションバーにリマインダーボタン追加
+- 変更: `src/features/memo/components/MemoCard.tsx` — バッジ表示追加
+
+## 設計判断
+
+| 判断事項 | 選択 | 理由 | 検討した代替案 |
+|---------|------|------|--------------|
+| メモとリマインダーの関係 | 1対1 | スコープが単発リマインダーのみ | 1対多（将来の複数リマインダー対応時に変更可） |
+| 状態管理方式 | 3状態（待機中/送信済み/キャンセル） | 通知の送信状態を追跡する必要がある | 2状態（有効/無効）— キャンセルと送信済みの区別が必要 |
+| 検索最適化 | 待機中のみの部分インデックス | スケジューラは待機中のみ検索する | 全件インデックス — 不要なデータを含み非効率 |
 
 ## システム影響
 
-### 影響を受ける既存機能
+### 影響範囲
 
-| 既存機能 | 影響内容 | リスク | 対策 |
-|---------|---------|-------|------|
-| MemoEditor | アクションバーにボタン追加 | 低 | 既存BookmarkButtonと同パターン |
-| MemoCard | バッジ表示追加 | 低 | オプショナル表示のため影響最小 |
-| メモ削除 | CASCADE削除でリマインダーも削除 | 中 | 外部キー制約で自動対応 |
+- メモ編集画面: アクションバーにボタン追加
+- メモカード: バッジ表示追加
+- メモ削除: リマインダーの連動削除
 
-### 後方互換性
+### リスク
 
-- Memo型にreminder?: Reminderを追加（オプショナル）のため既存コードに影響なし
-- 既存APIに変更なし、新規エンドポイントの追加のみ
-
-### パフォーマンス
-
-- メモ一覧取得時にremindersテーブルをJOIN → idx_reminders_memo_idインデックスで対応
-- pending状態のリマインダーのみスケジューラが検索 → 部分インデックスで対応
-- ReminderBadge は React.memo でメモ化（メモ一覧で大量レンダリングされるため）
-
-### セキュリティ
-
-- 認証: 既存の認証ミドルウェアを使用
-- 認可: メモの所有者のみリマインダーを操作可能（`ensureOwner` パターン）
-- 入力バリデーション: remind_at は未来の日時のみ許可
-
-### デプロイメント
-
-#### DBマイグレーション
-
-| マイグレーション | ロールバック可否 | 手順 |
-|---------------|---------------|------|
-| create_reminders_table | 可 | DROP TABLE reminders |
-
-#### 環境変数・設定変更
-
-新規の環境変数なし。
-
-#### デプロイ順序
-
-通常フローに従う（マイグレーション → アプリデプロイ）
+- メモ一覧取得時のリマインダーJOINによるパフォーマンス影響 → インデックスで対応
+- ブラウザのNotification API非対応環境 → リマインダー設定のみ（通知なし）で対応
 
 ## 実装タスク
 
-| # | タスク | 対象ファイル | 見積 |
-|---|-------|------------|------|
-| 1 | DBスキーマにremindersテーブル追加 | `src/db/schema.ts` | S |
-| 2 | リマインダーAPI実装 | `src/api/reminders.ts`, `src/api/index.ts` | M |
-| 3 | 型定義追加 | `src/types/memo.ts`, `src/features/reminder/types.ts` | S |
-| 4 | useReminderフック実装 | `src/features/reminder/hooks/useReminder.ts` | S |
-| 5 | ReminderPicker, ReminderBadge実装 | `src/features/reminder/components/` | L |
-| 6 | MemoActions, MemoCardに統合 | `src/features/memo/components/` | M |
-
 ### 依存関係図
 
-\`\`\`mermaid
-graph LR
-    T1[1: Schema] --> T2[2: API]
-    T1 --> T3[3: Types]
-    T2 --> T4[4: Hook]
+```mermaid
+graph TD
+    T1[#1 DBスキーマ追加] --> T2[#2 API実装]
+    T1 --> T3[#3 型定義追加]
+    T2 --> T4[#4 フック実装]
     T3 --> T4
-    T4 --> T5[5: Components]
-    T5 --> T6[6: Integration]
-\`\`\`
+    T4 --> T5[#5 UIコンポーネント実装]
+    T5 --> T6[#6 既存画面への統合]
+```
+
+### タスク一覧
+
+| # | タスク | 対象ファイル | 見積 | 依存 |
+|---|--------|------------|------|------|
+| 1 | DBスキーマにリマインダーテーブル追加 | `src/db/schema.ts` | S | - |
+| 2 | リマインダーAPI実装 | `src/api/reminders.ts`, `src/api/index.ts` | M | #1 |
+| 3 | 型定義追加 | `src/types/memo.ts`, `src/features/reminder/types.ts` | S | #1 |
+| 4 | useReminderフック実装 | `src/features/reminder/hooks/useReminder.ts` | S | #2, #3 |
+| 5 | ReminderPicker, ReminderBadge実装 | `src/features/reminder/components/` | L | #4 |
+| 6 | MemoActions, MemoCardに統合 | `src/features/memo/components/` | M | #5 |
+
+> 見積基準: S(〜1h), M(1-3h), L(3h〜)
 
 ## テスト方針
 
+### トレーサビリティ
+
+| 受入条件 | 自動テスト | 手動検証 |
+|---------|-----------|---------|
+| AC-1 | #1, #3 | MV-1 |
+| AC-2 | - | MV-2 |
+| AC-3 | - | MV-3 |
+| AC-4 | #3 | MV-1 |
+| AC-5 | #2, #3 | MV-4, MV-5 |
+
 ### 自動テスト
 
-| テストファイル | テスト内容 | 種別 |
-|-------------|---------|------|
-| `src/__tests__/reminders.test.ts` | リマインダーCRUD API | unit |
-| `src/features/reminder/__tests__/useReminder.test.ts` | フックの状態管理 | unit |
-| `src/features/reminder/__tests__/ReminderPicker.test.tsx` | 日時選択UI | unit |
-
-### 統合テスト
-
-| テストシナリオ | カバー範囲 | 既存フロー影響 |
-|-------------|---------|-------------|
-| メモ作成→リマインダー設定→通知受信 | API + スケジューラ連携 | メモ作成フローに影響なし |
-| メモ削除時のリマインダーCASCADE削除 | DB外部キー制約 | メモ削除フローに追加動作 |
-
-### 手動検証チェックリスト
-
-- [ ] メモ詳細画面でリマインダーアイコンをタップ → DateTimePickerが表示される
-- [ ] 未来の日時を選択して設定 → バッジが表示される
-- [ ] 設定済みリマインダーを変更 → 新しい日時に更新される
-- [ ] リマインダーを削除 → バッジが消える
-- [ ] 過去の日時を設定 → エラーメッセージが表示される
+| # | テスト | 種別 | 対象 |
+|---|--------|------|------|
+| 1 | リマインダーCRUD APIの正常系・異常系 | unit | `src/api/reminders.ts` |
+| 2 | useReminderフックの状態管理 | unit | `src/features/reminder/hooks/useReminder.ts` |
+| 3 | ReminderPicker・ReminderBadgeの表示・操作 | unit | `src/features/reminder/components/` |
 
 ### ビルド確認
 
-\`\`\`bash
+```bash
 npm run typecheck  # 型チェック
 npm run lint       # Lint
 npm run test       # テスト
 npm run build      # ビルド
-\`\`\`
+```
 
-## リスクと依存関係
+### 手動検証チェックリスト
 
-| リスク | 影響度 | 軽減策 |
-|-------|-------|-------|
-| ブラウザのNotification API対応 | 中 | 非対応ブラウザではリマインダー設定のみ（通知なし） |
-| メモ一覧のJOINパフォーマンス | 低 | idx_reminders_memo_idインデックスで対応 |
-
-## フィードバックログ
-
-| # | 日付 | 種別 | 内容 | 対応 |
-|---|------|------|------|------|
-| - | - | - | - | - |
+- [ ] MV-1: メモ詳細画面でリマインダーアイコンをタップし、日時選択UIが表示されること。日時を設定するとバッジが表示されること
+- [ ] MV-2: 設定した日時にプッシュ通知が届くこと
+- [ ] MV-3: 通知をタップするとメモの詳細画面に遷移すること
+- [ ] MV-4: 設定済みリマインダーの日時を変更できること
+- [ ] MV-5: リマインダーを削除するとバッジが消えること
+- [ ] MV-6: 過去の日時を設定しようとするとエラーメッセージが表示されること
 ```

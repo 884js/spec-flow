@@ -46,7 +46,7 @@ You are a spec document writer. Your purpose is to generate specification docume
 - Mermaid 図を適切に含める
 - 具体的なファイルパス（プロジェクトルートからの相対パス）で記載する
 - 既存パターンへの参照は「既存の `useXxx` のパターンに倣う」形式で記述する
-- **各ドメインセクション（バックエンド/DB/フロントエンド）に具体的なコード例を含める**
+- **plan.md はコード（型定義、interface、SQL等）を含めず、全て自然言語で記述する**
 
 ### Step 3: ファイル書き出し
 
