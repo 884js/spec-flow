@@ -9,10 +9,10 @@ metadata:
 # 仕様作成（Spec）
 
 ユーザーの要求から plan.md を生成するスキル。既存の plan.md がある場合は更新モードに切り替える。
-大規模機能では PR 分割付きの progress.md も同時生成する。
+plan.md 生成後、progress.md も同時生成する（規模に応じて single / multi-pr モード）。
 
 入力: ユーザーの要求（$ARGUMENTS または対話）
-出力: `docs/plans/{feature-name}/plan.md`（+ progress.md for 大規模機能）
+出力: `docs/plans/{feature-name}/plan.md` + `progress.md`
 
 **パスルール**: `docs/plans/{feature-name}/` はカレントディレクトリ直下。`{feature-name}` は英語の kebab-case。パス区切り不可
 
@@ -65,7 +65,7 @@ $ARGUMENTS の内容から、リクエストの種別を判定する:
 
 - **機能追加/変更**（「〜を追加」「〜を実装」「〜を変更」等）→ 1-a へ進む
 - **リサーチ/質問**（「どうすべきか」「ベストプラクティス」「〜ってどうやるの？」等）→ スコープ外。「リサーチや技術調査は `/spec` のスコープ外です。具体的な変更内容が決まったら `/spec` を呼んでください。」と案内して **終了**
-- **バグ修正**（「〜が動かない」「エラーが出る」「〜を修正」等）→ 「バグ修正には `/debug` で原因を特定してください。」と案内して **終了**
+- **バグ修正**（「〜が動かない」「エラーが出る」「〜を修正」等）→ 「バグ修正には `/fix` で原因を特定してください。」と案内して **終了**
 
 判定が曖昧な場合は AskUserQuestion で確認する:
 - 「機能として実装したいですか？それともリサーチですか？」
@@ -172,9 +172,11 @@ Task(subagent_type: writer):
   - 自己検証でセクション間の整合性を確認すること」
 ```
 
-### 4-b. 大規模機能の progress.md 生成
+### 4-b. progress.md 生成
 
-規模判定が「大」の場合、PR 分割付きの progress.md も同時生成する:
+plan.md 生成後、progress.md も同時生成する。mode は規模に応じて設定する:
+- 小〜中: `mode: single`
+- 大: `mode: multi-pr`
 
 ```
 Task(subagent_type: writer):
@@ -182,8 +184,8 @@ Task(subagent_type: writer):
   ドキュメント種別: progress
   feature-name: {feature-name}
   plan.md: docs/plans/{feature-name}/plan.md
-  mode: multi-pr
-  PR グルーピング: {Step 3 で決定した PR 分割}」
+  mode: {single | multi-pr}
+  PR グルーピング: {大規模の場合、Step 3 で決定した PR 分割}」
 ```
 
 ---

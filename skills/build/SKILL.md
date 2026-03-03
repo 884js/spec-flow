@@ -57,6 +57,15 @@ Read docs/plans/{feature-name}/plan.md
 
 plan.md が存在しない場合は「先に `/spec` で設計・実装計画を作成してください」と案内して終了。
 
+### progress.md の読み込み
+
+```
+Read docs/plans/{feature-name}/progress.md
+```
+
+- **存在** → 状態を復元
+- **存在しない** → 「先に `/spec` を完了してください（progress.md が生成されます）」と案内して終了
+
 ### state.json のガード
 
 ```
@@ -77,25 +86,6 @@ Task(subagent_type: researcher):
 ```
 
 調査結果は `docs/plans/{feature-name}/libs/{ライブラリ名}.md` に保存する。
-
-### progress.md の読み込み / 自動生成
-
-```
-Read docs/plans/{feature-name}/progress.md
-```
-
-- **存在** → 状態を復元
-- **存在しない** → writer エージェントで自動生成:
-
-```
-Task(subagent_type: writer):
-  プロンプト: 「progress.md を生成してください。
-  ドキュメント種別: progress
-  feature-name: {feature-name}
-  plan.md: docs/plans/{feature-name}/plan.md
-  mode: single
-  strategy 未実施: true」
-```
 
 ### debug ドキュメントの確認
 
@@ -181,7 +171,7 @@ plan.md の「ビルド確認」セクションのコマンドを順に実行。
 
 手動検証チェックリストをユーザーに提示:
 - 「問題なし、PR 作成に進む」→ Step 4 へ
-- 「不具合がある」→ 「`/debug` で根本原因を調査できます」と案内
+- 「不具合がある」→ 「`/fix` で根本原因を調査できます」と案内
 
 ---
 
