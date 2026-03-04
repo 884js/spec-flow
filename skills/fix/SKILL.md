@@ -58,13 +58,13 @@ Glob docs/plans/**/plan.md
 
 `feature 名を入力して指定する` が選ばれた場合、続けて AskUserQuestion で feature 名をテキスト入力させる。
 
-### 0-b. state.json の参照（feature モードのみ）
+### 0-b. 進捗の参照（feature モードのみ）
 
 ```
-Read docs/plans/{feature-name}/state.json
+Read docs/plans/{feature-name}/progress.md
 ```
 
-phase を把握して症状整理の参考にする。
+タスクの進捗状態を把握して症状整理の参考にする。
 
 ### 0-c. 過去の調査確認（feature モードのみ）
 
@@ -202,7 +202,6 @@ Step 2 の結果から正確な原因箇所を特定する:
 - {追加したデバッグログのリスト}
 ```
 
-state.json の debug.references に調査レポートパスを追加する。phase は変更しない。
 
 ### 4-c. standalone モードの場合
 

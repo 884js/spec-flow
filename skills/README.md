@@ -31,6 +31,5 @@ docs/plans/{feature-name}/
 ├── plan.md          ← spec（設計ドキュメント）
 ├── progress.md      ← spec（実装進捗の単一ソース）
 ├── result.md        ← check（検証結果）
-├── state.json       ← 全スキル（フェーズ遷移管理）
 └── debug-{YYYY-MM-DD}-{N}.md ← fix（調査レポート）
 ```

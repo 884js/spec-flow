@@ -66,14 +66,6 @@ Read docs/plans/{feature-name}/progress.md
 - **存在** → 状態を復元
 - **存在しない** → 「先に `/spec` を完了してください（progress.md が生成されます）」と案内して終了
 
-### state.json のガード
-
-```
-Read docs/plans/{feature-name}/state.json
-```
-
-spec.status が "done" でなければ「先に `/spec` を完了してください」と案内して終了。
-
 ### 外部ライブラリの事前調査
 
 plan.md で外部ライブラリが使われる場合、researcher エージェントで調査する:
@@ -109,8 +101,6 @@ progress.md のタスク進捗テーブルから集計:
 ## Step 1: feature ブランチ作成
 
 `feature/{feature-name}` 形式。ユーザー確認後に `git checkout -b` で作成する。
-
-state.json を更新: phase を "build"、build.status を "in_progress" に設定する。
 
 ---
 
@@ -186,5 +176,4 @@ AskUserQuestion で手動検証の結果を確認する:
 6. `git push -u origin feature/{feature-name}` → `gh pr create`
 7. PR URL を提示、progress.md を更新
 
-state.json を更新: build.status を "done"、phase を "check" に設定する。
 

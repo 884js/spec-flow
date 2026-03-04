@@ -16,16 +16,12 @@ description: "プロジェクト全体のスキル・エージェント構造ル
 - スキル側にはテンプレートやフォーマットファイルを置かない
 - スキルからエージェントにパスを渡す際は、エージェントの `references/` パスを指定する
 
-## state.json のフェーズ遷移
+## フェーズ管理（ファイルベース推論）
 
-```
-spec → build → check → done
-```
-
-- phase フィールドは現在アクティブなフェーズを示す
-- 各スキルが開始時・完了時に phase を更新する（feature-state-manager は廃止）
-- check の NEEDS_FIX 時は phase を "spec" に戻す（ループ対応）
-- 各フェーズの status は pending / in_progress / done の3値
+- state.json は使わない
+- plan.md + progress.md の存在 → spec 完了
+- result.md の存在と判定 → check の結果
+- NEEDS_FIX 時は result.md が spec の更新モードをトリガー
 
 ## 評価駆動開発
 
