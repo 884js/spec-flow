@@ -152,8 +152,10 @@ writer エージェントに生成を委譲する:
 ```
 Task(subagent_type: writer):
   プロンプト: 「docs/plans/{feature-name}/plan.md を生成してください。
+  **重要**: 生成後、必ず自己検証を行い、内容の整合性を確認すること
   ドキュメント種別: plan
   プロジェクト規約: {analyzer の要約}
+  コーディング規約: {analyzer のコーディング規約セクション}
   設計内容:
     概要: {確定した要件}
     受入条件: {確定した受入条件}
@@ -167,8 +169,8 @@ Task(subagent_type: writer):
     実装タスク: {依存関係付きタスク一覧}
     テスト方針: {テスト一覧・チェックリスト・ビルドコマンド}
   注意:
-  - frontmatter の status は done にすること
-  - plan.md は機能仕様書。コードは一切含めない
+  - frontmatter は title, feature-name, status(done), created, updated の5項目を全て含めること
+  - ソースコードは含めない（APIパス・カラム名・型は表や箇条書きで記述する）
   - 自己検証でセクション間の整合性を確認すること」
 ```
 
