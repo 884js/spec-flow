@@ -11,6 +11,8 @@
 | started | ○ | 開始日（YYYY-MM-DD） |
 | updated | ○ | 更新日（YYYY-MM-DD） |
 | mode | ○ | `single` or `multi-pr` |
+| repositories | × | 対象リポジトリ一覧（YAML リスト: name, path, description） |
+| docs | × | 関連ドキュメント（YAML リスト: パスや URL） |
 
 ## セクション構成
 

@@ -198,7 +198,9 @@ Task(subagent_type: writer):
   feature-name: {feature-name}
   plan.md: docs/plans/{feature-name}/plan.md
   mode: {single | multi-pr}
-  PR グルーピング: {大規模の場合、Step 3 で決定した PR 分割}」
+  PR グルーピング: {大規模の場合、Step 3 で決定した PR 分割}
+  repositories: {analyzer レポートの「プロジェクト概要」「技術スタック」から抽出}
+  docs: {analyzer レポートの「調査ソース > ドキュメント」から抽出}」
 ```
 
 ---

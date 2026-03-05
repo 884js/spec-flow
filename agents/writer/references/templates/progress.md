@@ -5,6 +5,12 @@ feature: "{機能名}"
 started: {YYYY-MM-DD}
 updated: {YYYY-MM-DD}
 mode: {single / multi-pr}
+repositories:
+  - name: "{リポジトリ名}"
+    path: "{ローカルパス}"
+    description: "{説明}"
+docs:
+  - "{関連ドキュメントパス}"
 ---
 
 # {機能名} — 実装進捗
