@@ -226,7 +226,7 @@ AskUserQuestion で選択肢を提示する:
 
 1. ローカルサーバーを起動:
 ```
-Bash(run_in_background): python3 scripts/annotation-viewer/server.py docs/plans/{feature-name}
+Bash(run_in_background): python3 ${CLAUDE_PLUGIN_ROOT}/scripts/annotation-viewer/server.py docs/plans/{feature-name}
 ```
 stdout から `PORT:{port}` を取得する。
 
