@@ -6,7 +6,7 @@
 <title>Plan Review — Annotation Viewer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 <style>
@@ -21,6 +21,11 @@
     --accent-hover:   #2196f3;
     --border:         #d6e3ed;
     --border-comment: #b8d4ea;
+    --bg-code:        #eef2f7;
+    --bg-pre:         #1a2638;
+    --text-pre:       #e1e4e8;
+    --color-danger:   #c0392b;
+    --bg-selection:   #ddeeff;
     --font-sans:      'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
     --font-mono:      'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   }
@@ -38,7 +43,6 @@
 
   .header {
     background: var(--bg-page);
-    color: var(--text-primary);
     border-bottom: 1px solid var(--border);
     padding: 14px 24px;
     display: flex;
@@ -109,7 +113,6 @@
     margin: 2.3em 0 0.5em;
     padding-bottom: 0.2em;
     border-bottom: 1px solid var(--border);
-    color: var(--text-primary);
   }
   .content h3 {
     font-size: 1.3em;
@@ -117,7 +120,6 @@
     line-height: 1.6;
     letter-spacing: 0.02em;
     margin: 2.25em 0 0.5em;
-    color: var(--text-primary);
   }
   .content p { margin: 1.5em 0 0; }
   .content p:first-child { margin-top: 0; }
@@ -125,15 +127,15 @@
   .content li { margin: 0.4em 0; }
   .content input[type="checkbox"] { margin-right: 6px; pointer-events: none; }
   .content code {
-    background: #eef2f7;
+    background: var(--bg-code);
     padding: 2px 6px;
     border-radius: 3px;
     font-size: 0.85em;
     font-family: var(--font-mono);
   }
   .content pre {
-    background: #1a2638;
-    color: #e1e4e8;
+    background: var(--bg-pre);
+    color: var(--text-pre);
     padding: 1.1em;
     border-radius: 4px;
     overflow-x: auto;
@@ -277,10 +279,10 @@
     font-size: 14px;
   }
 
-  .comment-item .comment-delete:hover { color: #c0392b; }
+  .comment-item .comment-delete:hover { color: var(--color-danger); }
 
   .selected-text {
-    background: #ddeeff;
+    background: var(--bg-selection);
     border-bottom: 1.5px solid var(--border-comment);
     padding: 1px 4px;
     border-radius: 2px;
@@ -489,11 +491,9 @@ function updateCount() {
     el.style.display = 'inline';
     el.textContent = `${comments.length} comment${comments.length > 1 ? 's' : ''}`;
     btn.textContent = 'コメントを送信して修正依頼';
-    btn.className = 'btn btn-primary';
   } else {
     el.style.display = 'none';
     btn.textContent = 'レビュー完了（変更なし）';
-    btn.className = 'btn btn-primary';
   }
 }
 
