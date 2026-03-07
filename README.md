@@ -13,21 +13,21 @@ Guides you from requirements hearing through design, implementation, and verific
 ## Workflow
 
 ```
-spec → build → check → done
-  ^                |
-  |   (NEEDS_FIX)  |
-  +----------------+
+(research) → spec → build → check → done
+               ^                |
+               |   (NEEDS_FIX)  |
+               +----------------+
 
-fix, research can be invoked independently at any time
+fix can be invoked independently at any time
 ```
 
 | Step | Skill | Role |
 |------|-------|------|
+| 0 | `/spec-flow:research` | Technical investigation → research.md generation. Supports codebase analysis and web research |
 | 1 | `/spec-flow:spec` | Requirements hearing → integrated analysis → direction confirmation → plan.md generation → browser review (Annotation Cycle) → progress.md generation |
 | 2 | `/spec-flow:build` | Branch creation → task-by-task implementation → build verification → PR creation, all guided by plan.md |
 | 3 | `/spec-flow:check` | Compares implementation code against plan.md and reports PASS / PARTIAL / NEEDS_FIX |
 | - | `/spec-flow:fix` | Root cause investigation with no speculative fixes allowed. Supports feature mode and standalone mode |
-| - | `/spec-flow:research` | Technical investigation → research.md generation. Supports codebase analysis and web research |
 
 ## Skills
 
@@ -38,8 +38,8 @@ Supports new mode (plan.md generation) and update mode (plan.md update from chec
 Also generates progress.md for task tracking (single mode for small/medium, multi-pr mode for large features).
 
 ```
-hearing → analysis → direction confirmation → plan.md generation
-  → Annotation Cycle (browser review) → progress.md generation
+(research) → hearing → analysis → direction confirmation → plan.md generation
+               → Annotation Cycle (browser review) → progress.md generation
 ```
 
 After plan.md generation, offers an **Annotation Cycle** — a browser-based review loop:
