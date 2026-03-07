@@ -10,21 +10,24 @@ mode: single
 
 ## 現在の状況
 
-実装未着手。plan.md をブラウザベースレビュー方式に更新済み。
+全タスク完了。ビルド確認待ち。
 
 ## 次にやること
 
-タスク #1〜#3 は並行着手可能。server.py と viewer.html の作成から開始する。
+ビルド確認 + 手動検証 → PR 作成。
 
 ## タスク進捗
 
 | # | タスク | 対象ファイル | 見積 | PR | リスク | 状態 |
 |---|--------|------------|------|-----|--------|------|
-| 1 | Python HTTP サーバー作成 | `scripts/annotation-viewer/server.py` | M | - | - | - |
-| 2 | コメント UI HTML 作成 | `scripts/annotation-viewer/viewer.html` | M | - | - | - |
-| 3 | writer にコメントベース修正 WF 追加 | `agents/writer/writer.md` | S | - | - | - |
-| 4 | spec SKILL.md に Step 4-c 追加 + allowed-tools 更新 | `skills/spec/SKILL.md` | S | - | - | - |
-| 5 | 統合テスト + .gitignore 更新 | `.gitignore` | S | - | - | - |
+| 1 | Python HTTP サーバー作成 | `scripts/annotation-viewer/server.py` | M | - | - | ✓ |
+| 2 | コメント UI HTML 作成 | `scripts/annotation-viewer/viewer.html` | M | - | - | ✓ |
+| 3 | writer にコメントベース修正 WF 追加 | `agents/writer/writer.md` | S | - | - | ✓ |
+| 4 | spec SKILL.md に Step 4-c 追加 + allowed-tools 更新 | `skills/spec/SKILL.md` | S | - | - | ✓ |
+| 5 | 統合テスト + .gitignore 更新 | `.gitignore` | S | - | - | ✓ |
+| 6 | server.py に plan.md.bak 配信機能追加 | `scripts/annotation-viewer/server.py` | S | - | - | ✓ |
+| 7 | viewer.html に jsdiff 差分ハイライト追加 | `scripts/annotation-viewer/viewer.html` | S | - | - | ✓ |
+| 8 | SKILL.md に bak コピー処理追加 | `skills/spec/SKILL.md` | S | - | - | ✓ |
 
 > タスク定義の詳細は [plan.md](./plan.md) を参照
 
@@ -44,3 +47,4 @@ mode: single
 |------|------|
 | 2026-03-04 | progress.md 作成、実装開始準備完了 |
 | 2026-03-04 | plan.md をブラウザベースレビュー方式に更新 |
+| 2026-03-07 | タスク #6-#8（差分ハイライト機能）実装完了 |

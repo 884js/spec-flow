@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan Review — Annotation Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/8.0.2/diff.min.js"></script>
+<style>
+  :root {
+    --bg-page:        #f5f9fc;
+    --bg-content:     #ffffff;
+    --bg-comment:     #eef6ff;
+    --text-primary:   #1a1a1a;
+    --text-secondary: #555555;
+    --text-caption:   #888888;
+    --accent:         #3ea8ff;
+    --accent-hover:   #2196f3;
+    --border:         #d6e3ed;
+    --border-comment: #b8d4ea;
+    --bg-code:        #eef2f7;
+    --bg-pre:         #1a2638;
+    --text-pre:       #e1e4e8;
+    --color-danger:   #c0392b;
+    --bg-selection:   #ddeeff;
+    --font-sans:      'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
+    --font-mono:      'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.9;
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
+    background: var(--bg-page);
+  }
+
+  .header {
+    background: var(--bg-page);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+
+  .btn {
+    padding: 7px 18px;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    letter-spacing: 0.04em;
+    transition: background-color 0.15s, color 0.15s;
+  }
+
+  .btn:hover { background: var(--accent); color: var(--bg-page); }
+  .btn-primary { background: var(--accent); color: var(--bg-page); }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+  .btn-secondary:hover { background: var(--border); color: var(--text-primary); }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  .content {
+    background: var(--bg-content);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 40px 48px;
+  }
+
+  /* Markdown styles */
+  .content h1 {
+    font-size: 1.7em;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.03em;
+    margin: 2.3em 0 0.5em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--border);
+  }
+  .content h1:first-child { margin-top: 0; }
+  .content h2 {
+    font-size: 1.5em;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.03em;
+    margin: 2.3em 0 0.5em;
+    padding-bottom: 0.2em;
+    border-bottom: 1px solid var(--border);
+  }
+  .content h3 {
+    font-size: 1.3em;
+    font-weight: 600;
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+    margin: 2.25em 0 0.5em;
+  }
+  .content p { margin: 1.5em 0 0; }
+  .content p:first-child { margin-top: 0; }
+  .content ul, .content ol { margin: 1.4em 0; padding-left: 1.8em; line-height: 1.7; }
+  .content li { margin: 0.4em 0; }
+  .content input[type="checkbox"] { margin-right: 6px; pointer-events: none; }
+  .content code {
+    background: var(--bg-code);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.85em;
+    font-family: var(--font-mono);
+  }
+  .content pre {
+    background: var(--bg-pre);
+    color: var(--text-pre);
+    padding: 1.1em;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 1.3em 0;
+    font-size: 0.9em;
+  }
+  .content pre code { background: none; padding: 0; color: inherit; }
+  .content table { border-collapse: collapse; width: 100%; margin: 1.2em 0; font-size: 0.95em; line-height: 1.5; }
+  .content th, .content td { border: 1px solid var(--border); padding: 0.5em 0.75em; text-align: left; }
+  .content th { background: var(--bg-page); font-weight: 700; }
+  .content blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 0.5em 0.7em 0.5em 1em;
+    margin: 1.4em 0;
+    font-size: 0.97em;
+    color: var(--text-secondary);
+    background: transparent;
+  }
+  .content hr { border: none; border-top: 1px solid var(--border); margin: 2.5em 0; }
+
+  /* Section hover comment button */
+  .section-wrapper { position: relative; }
+
+  .section-wrapper:hover .comment-btn {
+    opacity: 1;
+  }
+
+  .comment-btn {
+    position: absolute;
+    left: -36px;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent);
+    background: var(--bg-content);
+    color: var(--accent);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .comment-btn:hover { background: var(--accent); color: var(--bg-content); }
+
+  /* Block-level comment buttons */
+  .block-wrapper {
+    position: relative;
+  }
+
+  .block-wrapper:hover > .block-comment-btn {
+    opacity: 1;
+  }
+
+  .block-comment-btn {
+    position: absolute;
+    left: -28px;
+    top: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg-content);
+    color: var(--text-caption);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .block-comment-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Comment form */
+  .comment-form {
+    background: var(--bg-comment);
+    border: 1px solid var(--border-comment);
+    border-radius: 4px;
+    padding: 14px;
+    margin: 12px 0 20px;
+  }
+
+  .comment-form textarea {
+    width: 100%;
+    min-height: 60px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 14px;
+    line-height: 1.7;
+    resize: vertical;
+    font-family: var(--font-sans);
+    background: var(--bg-content);
+    color: var(--text-primary);
+  }
+
+  .comment-form textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .comment-form .form-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: flex-end;
+  }
+
+  .comment-form .btn { font-size: 12px; padding: 5px 14px; }
+
+  /* Added comments */
+  .comment-item {
+    background: var(--bg-comment);
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    margin: 10px 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .comment-item .comment-meta {
+    font-size: 12px;
+    color: var(--text-caption);
+    margin-bottom: 4px;
+  }
+
+  .comment-item .comment-delete {
+    float: right;
+    background: none;
+    border: none;
+    color: var(--text-caption);
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .comment-item .comment-delete:hover { color: var(--color-danger); }
+
+  .selected-text {
+    background: var(--bg-selection);
+    border-bottom: 1.5px solid var(--border-comment);
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 12px;
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+
+  /* Badge */
+  .comment-count {
+    background: var(--bg-comment);
+    color: var(--accent);
+    border: 1px solid var(--border-comment);
+    border-radius: 10px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+  }
+
+  /* Selection tooltip */
+  .selection-tooltip {
+    position: absolute;
+    background: var(--accent);
+    color: var(--bg-page);
+    border: none;
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    z-index: 200;
+    box-shadow: 0 2px 8px rgba(43,40,35,0.15);
+    display: none;
+  }
+  .selection-tooltip:hover { background: var(--accent-hover); }
+
+  /* Diff highlight */
+  .diff-added {
+    background: #d4edda;
+    border-left: 3px solid #28a745;
+    padding-left: 6px;
+    margin-left: -9px;
+  }
+
+  .diff-badge {
+    display: inline-block;
+    background: #28a745;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 10px;
+    vertical-align: middle;
+  }
+
+  /* Loading */
+  .loading { text-align: center; padding: 48px; color: var(--text-caption); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Plan Review</h1>
+  <div class="header-actions">
+    <span id="commentCount" class="comment-count" style="display:none">0 comments</span>
+    <button class="btn btn-primary" id="doneBtn" onclick="submitAndClose()">レビュー完了（変更なし）</button>
+  </div>
+</div>
+
+<button class="selection-tooltip" id="selectionTooltip">コメントを追加</button>
+
+<div class="container">
+  <div class="content" id="content">
+    <div class="loading">読み込み中...</div>
+  </div>
+</div>
+
+<script>
+const comments = [];
+
+async function loadPlan() {
+  mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+  const res = await fetch('/api/plan');
+  const data = await res.json();
+  const html = marked.parse(data.content);
+  document.getElementById('content').innerHTML = html;
+
+  // Render Mermaid diagrams
+  const codeBlocks = document.querySelectorAll('pre code.language-mermaid');
+  for (const block of codeBlocks) {
+    const pre = block.parentElement;
+    const container = document.createElement('div');
+    container.className = 'mermaid';
+    container.textContent = block.textContent;
+    pre.replaceWith(container);
+  }
+  await mermaid.run({ nodes: document.querySelectorAll('.mermaid') });
+
+  // Remove disabled from checkboxes (marked.js adds it by default)
+  document.querySelectorAll('.content input[type="checkbox"]').forEach(cb => cb.removeAttribute('disabled'));
+
+  // Apply diff highlights if old version is available
+  if (data.old && typeof Diff !== 'undefined') {
+    applyDiffHighlights(data.old, data.content);
+  }
+
+  wrapSections();
+}
+
+function applyDiffHighlights(oldText, newText) {
+  // Compute which lines in the new text were added/changed
+  const diff = Diff.diffLines(oldText, newText);
+  const addedLines = new Set();
+  let lineNum = 0;
+  for (const part of diff) {
+    if (part.removed) continue;
+    const lines = part.value.split('\n');
+    // diffLines includes trailing newline in value, so last empty element is not a real line
+    const count = part.value.endsWith('\n') ? lines.length - 1 : lines.length;
+    if (part.added) {
+      for (let i = 0; i < count; i++) {
+        addedLines.add(lineNum + i);
+      }
+    }
+    lineNum += count;
+  }
+
+  if (addedLines.size === 0) return;
+
+  // Map new text lines to rendered DOM elements by matching text content
+  const newLines = newText.split('\n');
+  const content = document.getElementById('content');
+
+  // Walk all block-level elements and check if their source lines are in addedLines
+  const blocks = content.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6, tr, blockquote, pre');
+  for (const block of blocks) {
+    const blockText = block.textContent.trim();
+    if (!blockText) continue;
+
+    // Check if any of this block's source lines are in addedLines
+    const isChanged = newLines.some((line, idx) => {
+      if (!addedLines.has(idx)) return false;
+      const trimmed = line.replace(/^[#\-*>|\s]+/, '').trim();
+      return trimmed.length > 3 && blockText.includes(trimmed);
+    });
+
+    if (isChanged) {
+      block.classList.add('diff-added');
+    }
+  }
+
+  // Show diff badge in header
+  const badge = document.createElement('span');
+  badge.className = 'diff-badge';
+  badge.textContent = `${addedLines.size} lines changed`;
+  document.querySelector('.header-actions').prepend(badge);
+}
+
+function wrapSections() {
+  const content = document.getElementById('content');
+  const headings = content.querySelectorAll('h1, h2, h3');
+
+  headings.forEach(heading => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'section-wrapper';
+
+    const btn = document.createElement('button');
+    btn.className = 'comment-btn';
+    btn.textContent = '+';
+    btn.onclick = () => openCommentForm(wrapper, heading.textContent);
+
+    heading.parentNode.insertBefore(wrapper, heading);
+    wrapper.appendChild(btn);
+    wrapper.appendChild(heading);
+
+    // Move sibling elements into wrapper until next heading
+    let next = wrapper.nextSibling;
+    while (next && !(next.nodeType === 1 && /^H[123]$/.test(next.tagName))) {
+      const moved = next;
+      next = next.nextSibling;
+      wrapper.appendChild(moved);
+    }
+
+    // Add block-level comment buttons to paragraphs, list items, tables, blockquotes
+    const blocks = wrapper.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li, :scope > table, :scope > blockquote, :scope > pre');
+    blocks.forEach(block => {
+      const bw = document.createElement('div');
+      bw.className = 'block-wrapper';
+      block.parentNode.insertBefore(bw, block);
+      bw.appendChild(block);
+
+      const bbtn = document.createElement('button');
+      bbtn.className = 'block-comment-btn';
+      bbtn.textContent = '+';
+      bbtn.onclick = () => {
+        const blockText = block.textContent.trim().substring(0, 80);
+        openCommentForm(wrapper, heading.textContent, blockText);
+      };
+      bw.appendChild(bbtn);
+    });
+  });
+}
+
+function openCommentForm(wrapper, sectionHeading, blockText) {
+  // Don't open if already open
+  if (wrapper.querySelector('.comment-form')) return;
+
+  const selectedText = blockText || window.getSelection().toString().trim();
+
+  const form = document.createElement('div');
+  form.className = 'comment-form';
+
+  let selectedHtml = '';
+  if (selectedText) {
+    selectedHtml = `<div class="selected-text">選択: "${selectedText.substring(0, 100)}${selectedText.length > 100 ? '...' : ''}"</div>`;
+  }
+
+  form.innerHTML = `
+    ${selectedHtml}
+    <textarea placeholder="コメントを入力..."></textarea>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="this.closest('.comment-form').remove()">キャンセル</button>
+      <button class="btn btn-primary" onclick="addComment(this, '${sectionHeading.replace(/'/g, "\\'")}', '${selectedText.replace(/'/g, "\\'")}')">追加</button>
+    </div>
+  `;
+
+  // Insert after the heading
+  const heading = wrapper.querySelector('h1, h2, h3');
+  heading.after(form);
+  form.querySelector('textarea').focus();
+}
+
+function addComment(btn, sectionHeading, selectedText) {
+  const form = btn.closest('.comment-form');
+  const textarea = form.querySelector('textarea');
+  const text = textarea.value.trim();
+  if (!text) return;
+
+  const heading = form.closest('.section-wrapper').querySelector('h1, h2, h3');
+  const prefix = heading ? '#'.repeat(parseInt(heading.tagName[1])) + ' ' : '## ';
+  const comment = { sectionHeading: `${prefix}${sectionHeading}`, selectedText: selectedText || undefined, comment: text };
+
+  comments.push(comment);
+
+  // Replace form with comment display
+  const item = document.createElement('div');
+  item.className = 'comment-item';
+  const idx = comments.length - 1;
+  item.innerHTML = `
+    <button class="comment-delete" onclick="deleteComment(${idx}, this)">&times;</button>
+    ${selectedText ? `<div class="selected-text">"${selectedText.substring(0, 80)}${selectedText.length > 80 ? '...' : ''}"</div>` : ''}
+    <div>${escapeHtml(text)}</div>
+  `;
+  form.replaceWith(item);
+  updateCount();
+}
+
+function deleteComment(idx, btn) {
+  comments.splice(idx, 1);
+  btn.closest('.comment-item').remove();
+  updateCount();
+  // Re-index delete buttons
+  document.querySelectorAll('.comment-item .comment-delete').forEach((b, i) => {
+    b.onclick = () => deleteComment(i, b);
+  });
+}
+
+function updateCount() {
+  const el = document.getElementById('commentCount');
+  const btn = document.getElementById('doneBtn');
+  if (comments.length > 0) {
+    el.style.display = 'inline';
+    el.textContent = `${comments.length} comment${comments.length > 1 ? 's' : ''}`;
+    btn.textContent = 'コメントを送信して修正依頼';
+  } else {
+    el.style.display = 'none';
+    btn.textContent = 'レビュー完了（変更なし）';
+  }
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function submitAndClose() {
+  await fetch('/api/done', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ comments })
+  });
+
+  const msg = comments.length === 0
+    ? 'レビュー完了。このタブを閉じてください。'
+    : 'コメントを送信しました。修正中です...';
+  document.getElementById('content').innerHTML = `<div class="loading">${msg}</div>`;
+}
+
+// Selection-based comment tooltip
+document.addEventListener('mouseup', () => {
+  const tooltip = document.getElementById('selectionTooltip');
+  const sel = window.getSelection();
+  const text = sel.toString().trim();
+
+  if (!text || text.length < 2) {
+    tooltip.style.display = 'none';
+    return;
+  }
+
+  // Find the section wrapper containing the selection
+  const anchorNode = sel.anchorNode;
+  const wrapper = anchorNode?.parentElement?.closest?.('.section-wrapper');
+  if (!wrapper) {
+    tooltip.style.display = 'none';
+    return;
+  }
+
+  const range = sel.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+  tooltip.style.display = 'block';
+  tooltip.style.left = `${rect.left + rect.width / 2 - 50}px`;
+  tooltip.style.top = `${rect.top + window.scrollY - 32}px`;
+
+  tooltip.onclick = () => {
+    const heading = wrapper.querySelector('h1, h2, h3');
+    if (heading) openCommentForm(wrapper, heading.textContent);
+    tooltip.style.display = 'none';
+  };
+});
+
+document.addEventListener('mousedown', (e) => {
+  if (e.target.id !== 'selectionTooltip') {
+    document.getElementById('selectionTooltip').style.display = 'none';
+  }
+});
+
+loadPlan();
+</script>
+</body>
+</html>

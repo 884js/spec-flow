@@ -1,38 +1,37 @@
 # Skills
 
-仕様駆動開発のワークフローを構成するスキル群。
+A set of skills that compose the spec-driven development workflow.
 
-## ワークフロー
+## Workflow
 
 ```
-spec → build → check → done
-  ^                |
-  |   (NEEDS_FIX)  |
-  +----------------+
+(research) → spec → build → check → done
+               ^                |
+               |   (NEEDS_FIX)  |
+               +----------------+
 
-fix は任意タイミングで独立起動（「動かない」「期待と違う」）
-research は任意タイミングで独立起動（調査結果は /spec で自動検出）
+fix can be invoked independently at any time
 ```
 
-## スキル一覧
+## Skill List
 
-| スキル | 概要 | 前提 |
-|--------|------|------|
-| **spec** | 要件ヒアリング → 統合分析 → 方向性確認 → plan.md + progress.md 生成。新規/更新の2モード対応。規模に応じて single / multi-pr モード | なし |
-| **build** | plan.md に沿って実装。ブランチ作成、タスク順のコーディング、ビルド確認、PR 作成。中断・再開対応 | spec 完了 |
-| **check** | plan.md と実装コードを突合し PASS / PARTIAL / NEEDS_FIX の3段階で判定。NEEDS_FIX 時は spec への更新を提案 | build 完了 |
-| **fix** | 不具合の根本原因を調査。推測での修正を禁止し、事実に基づく修正方針を立てる。feature / standalone の2モード対応 | build 完了後 |
-| **research** | 技術調査 → research.md 生成。コードベース分析・Web調査に対応。任意タイミングで独立起動 | なし |
+| Skill | Description | Prerequisite |
+|-------|-------------|--------------|
+| **spec** | Requirements hearing → integrated analysis → direction confirmation → plan.md generation → Annotation Cycle (browser review) → progress.md generation. Supports new/update modes. Single / multi-pr mode based on scale | None |
+| **build** | Implements features guided by plan.md. Branch creation, task-by-task coding, build verification, PR creation. Supports pause/resume | spec completed |
+| **check** | Compares plan.md against implementation code and reports PASS / PARTIAL / NEEDS_FIX. On NEEDS_FIX, proposes spec update | build completed |
+| **fix** | Investigates root causes of issues. Prohibits speculative fixes, builds fix strategy based on facts. Supports feature / standalone modes | None |
+| **research** | Technical investigation → research.md generation. Supports codebase analysis and web research. Can be invoked independently at any time | None |
 
-## 出力先
+## Output
 
-全スキルの成果物は `docs/plans/{feature-name}/` に格納される。
+All skill artifacts are stored in `docs/plans/{feature-name}/`.
 
 ```
 docs/plans/{feature-name}/
-├── plan.md          ← spec（設計ドキュメント）
-├── progress.md      ← spec（実装進捗の単一ソース）
-├── result.md        ← check（検証結果）
-├── research.md      ← research（調査レポート）
-└── debug-{YYYY-MM-DD}-{N}.md ← fix（調査レポート）
+├── plan.md          ← spec (design document)
+├── progress.md      ← spec (single source of implementation progress)
+├── result.md        ← check (verification result)
+├── research.md      ← research (investigation report)
+└── debug-{YYYY-MM-DD}-{N}.md ← fix (investigation report)
 ```

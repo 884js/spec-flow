@@ -1,7 +1,7 @@
 # spec-flow
 
 A lightweight spec-driven development plugin for Claude Code.
-Guides you from requirements hearing through design, implementation, and verification with 4 skills centered around `plan.md`.
+Guides you from requirements hearing through design, implementation, and verification with 5 skills centered around `plan.md`.
 
 ## Install
 
@@ -13,17 +13,18 @@ Guides you from requirements hearing through design, implementation, and verific
 ## Workflow
 
 ```
-spec → build → check → done
-  ^                |
-  |   (NEEDS_FIX)  |
-  +----------------+
+(research) → spec → build → check → done
+               ^                |
+               |   (NEEDS_FIX)  |
+               +----------------+
 
 fix can be invoked independently at any time
 ```
 
 | Step | Skill | Role |
 |------|-------|------|
-| 1 | `/spec-flow:spec` | Requirements hearing → integrated analysis → direction confirmation → plan.md generation |
+| 0 | `/spec-flow:research` | Technical investigation → research.md generation. Supports codebase analysis and web research |
+| 1 | `/spec-flow:spec` | Requirements hearing → integrated analysis → direction confirmation → plan.md generation → browser review (Annotation Cycle) → progress.md generation |
 | 2 | `/spec-flow:build` | Branch creation → task-by-task implementation → build verification → PR creation, all guided by plan.md |
 | 3 | `/spec-flow:check` | Compares implementation code against plan.md and reports PASS / PARTIAL / NEEDS_FIX |
 | - | `/spec-flow:fix` | Root cause investigation with no speculative fixes allowed. Supports feature mode and standalone mode |
@@ -35,6 +36,19 @@ fix can be invoked independently at any time
 Completes everything from requirements hearing to technical design and implementation planning in a single command.
 Supports new mode (plan.md generation) and update mode (plan.md update from check results or additional requirements).
 Also generates progress.md for task tracking (single mode for small/medium, multi-pr mode for large features).
+
+```
+(research) → hearing → analysis → direction confirmation → plan.md generation
+               → Annotation Cycle (browser review) → progress.md generation
+```
+
+After plan.md generation, offers an **Annotation Cycle** — a browser-based review loop:
+
+1. A local server starts and opens the browser with the rendered plan.md
+2. You add comments to sections, paragraphs, or selected text
+3. Click "submit comments" → writer agent auto-revises plan.md
+4. Browser re-opens with updated plan.md — repeat until satisfied
+5. Click "review complete (no changes)" → cycle ends
 
 ```
 /spec-flow:spec add user notification feature
@@ -69,6 +83,42 @@ Operates in feature mode (with plan.md for spec correlation) or standalone mode 
 
 ```
 /spec-flow:fix describe the error symptoms
+```
+
+### research
+
+Investigates technical topics through codebase analysis and web research.
+Outputs research.md with findings, comparisons, and recommendations.
+Results are automatically detected by `/spec` when creating a new spec.
+
+```
+/spec-flow:research authentication patterns for this project
+```
+
+**Output**: `docs/plans/{feature-name}/research.md`
+
+## Architecture
+
+```
+skills/          ← User-facing entry points (orchestration)
+  spec/build/check/fix/research
+
+agents/          ← Backend agents invoked via Task()
+  analyzer/      ← Project-wide integrated analysis
+  writer/        ← plan.md / progress.md / result.md generation
+  verifier/      ← Spec vs implementation comparison
+  researcher/    ← Technical investigation
+
+scripts/         ← Utility scripts
+  annotation-viewer/  ← Browser-based plan.md review server
+
+docs/plans/      ← All artifacts per feature
+  {feature-name}/
+    ├── plan.md
+    ├── progress.md
+    ├── result.md
+    ├── research.md
+    └── debug-*.md
 ```
 
 ## Marketplace
