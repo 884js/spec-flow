@@ -42,24 +42,13 @@ Glob docs/plans/{feature-name}/plan.md
 - **feature-name 指定あり** → `docs/plans/{feature-name}/` を出力先とする。plan.md があれば Read してコンテキストにする
 - **feature-name 指定なし** → $ARGUMENTS からトピック名を kebab-case で生成。出力先は `docs/plans/{topic}/`
 
-### 0-b. 旧形式 research.md の自動移行
+### 0-b. 既存 research ファイルの確認
 
 ```
-Glob docs/plans/{topic}/research.md
+Glob docs/plans/{topic}/research*.md
 ```
 
-旧形式の `research.md` が存在する場合、自動的に新形式にリネームする:
-
-1. ファイルを Read し、「調査日:」行からの日付と「# リサーチ:」行からトピックを抽出
-2. 日付が取得できない場合はファイルの更新日を使用、トピックが取得できない場合は `unknown` を使用
-3. Bash でリネーム: `mv research.md research-{date}-{topic}.md`
-4. ユーザーに移行完了を通知: 「既存の research.md を research-{date}-{topic}.md に移行しました。」
-
-### 0-c. 既存 research ファイルの確認
-
-```
-Glob docs/plans/{topic}/research-*.md
-```
+`research-{YYYY-MM-DD}-{topic}.md` の命名規則に合わないファイルがあれば、Read して調査日・トピックを抽出しリネームする。
 
 既存の research ファイルがある場合、一覧を表示する:
 
