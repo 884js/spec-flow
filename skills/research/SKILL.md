@@ -1,20 +1,21 @@
 ---
 name: research
-description: "Investigates technical topics through codebase analysis and web research. Outputs research.md with findings, comparisons, and recommendations. Use when exploring options, comparing libraries, or investigating architecture decisions."
-allowed-tools: Read Glob Grep Write Task
+description: "Investigates technical topics through codebase analysis and web research. Outputs research-{date}-{topic}.md with findings, comparisons, and recommendations. Supports multiple research files per plan. Use when exploring options, comparing libraries, or investigating architecture decisions."
+allowed-tools: Read Glob Grep Write Edit Bash Task
 metadata:
   triggers: research, investigate, 調査, リサーチ, 技術調査, ベストプラクティス, 比較, どうすべきか
 ---
 
 # 技術調査（Research）
 
-技術トピックを調査し、research.md に結果を出力するスキル。
+技術トピックを調査し、`research-{YYYY-MM-DD}-{topic}.md` に結果を出力するスキル。
+同一 plan ディレクトリに複数のリサーチファイルを保持できる。
 コードベース分析・Web調査・ライブラリ比較・ベストプラクティス調査に対応。
 
 入力: ユーザーの調査要求（$ARGUMENTS または対話）
-出力: `docs/plans/{topic}/research.md`
+出力: `docs/plans/{feature-name}/research-{YYYY-MM-DD}-{topic}.md`
 
-**パスルール**: `docs/plans/{topic}/` はカレントディレクトリ直下。`{topic}` は英語の kebab-case。パス区切り不可
+**パスルール**: `docs/plans/{feature-name}/` はカレントディレクトリ直下。`{feature-name}` は英語の kebab-case。パス区切り不可
 
 ## ワークフロー
 
@@ -22,7 +23,7 @@ metadata:
 Step 0: コンテキスト判定（feature 紐付き / standalone）
 Step 1: 調査対象の明確化 + タイプ判定
 Step 2: 調査実行（analyzer / researcher に委譲）
-Step 3: 結果統合 + research.md 出力
+Step 3: 結果統合 + research ファイル出力
 Step 4: 次のアクション提示
 ```
 
@@ -41,15 +42,22 @@ Glob docs/plans/{feature-name}/plan.md
 - **feature-name 指定あり** → `docs/plans/{feature-name}/` を出力先とする。plan.md があれば Read してコンテキストにする
 - **feature-name 指定なし** → $ARGUMENTS からトピック名を kebab-case で生成。出力先は `docs/plans/{topic}/`
 
-### 0-b. 既存 research.md の確認
+### 0-b. 既存 research ファイルの確認
 
 ```
-Glob docs/plans/{topic}/research.md
+Glob docs/plans/{topic}/research*.md
 ```
 
-存在する場合、AskUserQuestion で確認:
-- 「前回の調査を踏まえて追加調査する」→ 既存 research.md を Read し、追記モード
-- 「新規に調査をやり直す」→ 上書きモード
+`research-{YYYY-MM-DD}-{topic}.md` の命名規則に合わないファイルがあれば、Read して調査日・トピックを抽出しリネームする。
+
+既存の research ファイルがある場合、一覧を表示する:
+
+```
+このディレクトリには以下のリサーチがあります:
+- research-2026-03-01-library-comparison.md
+- research-2026-03-05-architecture.md
+新しいリサーチを追加します。
+```
 
 ---
 
@@ -108,13 +116,17 @@ Task(subagent_type: researcher):
 
 ---
 
-## Step 3: 結果統合 + research.md 出力
+## Step 3: 結果統合 + research ファイル出力
 
-エージェントの結果を統合し、`docs/plans/{topic}/research.md` に Write で直接保存する。
+### 出力ファイル名の生成
 
-追記モードの場合は既存内容の末尾に「## 追加調査（{YYYY-MM-DD}）」セクションとして追記する。
+ファイル名: `research-{YYYY-MM-DD}-{topic}.md`
+- `{YYYY-MM-DD}`: 当日の日付
+- `{topic}`: 調査トピックを kebab-case に変換（例: `library-comparison`, `architecture-patterns`）
 
-### research.md フォーマット
+エージェントの結果を統合し、`docs/plans/{feature-name}/research-{YYYY-MM-DD}-{topic}.md` に Write で直接保存する。
+
+### research ファイルフォーマット
 
 ```markdown
 # リサーチ: {トピック一行サマリー}
@@ -152,6 +164,6 @@ Task(subagent_type: researcher):
 ## Step 4: 次のアクション提示
 
 AskUserQuestion で選択肢を提示する:
-- 「`/spec` で仕様を作成する」→ `/spec {topic}` の実行を案内
-- 「追加で調査したい」→ Step 1 に戻る（最大2往復）
+- 「`/spec` で仕様を作成する」→ `/spec {feature-name}` の実行を案内
+- 「追加で別トピックを調査したい」→ Step 1 に戻る（同一ディレクトリに別ファイルとして保存）
 - 「調査完了」→ 終了

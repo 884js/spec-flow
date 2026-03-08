@@ -54,16 +54,16 @@ Glob docs/plans/{feature-name}/result.md
 result.md が存在する場合、NEEDS_FIX の不一致箇所を抽出してユーザーに提示する。
 ユーザーに変更点をヒアリングした上で Step 3 へ（統合分析はスキップ）。
 
-### 0-c. research.md の検出（新規モードのみ）
+### 0-c. research ファイルの検出（新規モードのみ）
 
 ```
-Glob docs/plans/{feature-name}/research.md
+Glob docs/plans/{feature-name}/research*.md
 ```
 
-research.md が存在する場合、Read して調査結果をコンテキストとして保持する。
-ユーザーに通知: 「{feature-name} のリサーチ結果が見つかりました。この調査を踏まえて仕様を作成します。」
+research ファイルが1件以上存在する場合、すべて Read して調査結果をコンテキストとして保持する。
+ユーザーに通知: 「{feature-name} のリサーチ結果が {N} 件見つかりました。これらの調査を踏まえて仕様を作成します。」
 
-※ research.md は「参考情報」として扱い、仕様を拘束しない。
+※ research ファイルは「参考情報」として扱い、仕様を拘束しない。
 
 ---
 
@@ -127,7 +127,7 @@ Task(subagent_type: analyzer):
   コードパターン（API、DB、コンポーネント、データフロー）、Git履歴を調査し、
   1つの統合レポートで返してください。
   追加機能の概要: {Step 1 で把握した機能概要}
-  {research.md がある場合: リサーチ結果: {research.md の要約}}」
+  {research ファイルがある場合: リサーチ結果: {各 research ファイルの要約}}」
 ```
 
 ### 並行開発チェック
