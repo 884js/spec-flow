@@ -100,7 +100,17 @@ progress.md のタスク進捗テーブルから集計:
 
 ## Step 1: feature ブランチ作成
 
-`feature/{feature-name}` 形式。ユーザー確認後に `git checkout -b` で作成する。
+```
+Bash: git branch --show-current
+```
+
+現在のブランチを表示し、AskUserQuestion で確認する:
+- 「現在の {branch} から切る」
+- 「別のブランチから切る」
+
+「別のブランチから切る」が選ばれた場合、ブランチ名を入力させて `git checkout {branch}` してから作成する。
+
+`git checkout -b feature/{feature-name}` で作成する。
 
 ---
 
