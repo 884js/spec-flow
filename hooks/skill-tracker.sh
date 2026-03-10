@@ -18,6 +18,8 @@ fi
 
 STATE_FILE="$STATE_DIR/$SESSION_ID.json"
 
+echo "[hook] skill-tracker: event=$EVENT session=$SESSION_ID" >&2
+
 case "$EVENT" in
   PreToolUse)
     SKILL_NAME=$(echo "$INPUT" | jq -r '.tool_input.skill // empty')
