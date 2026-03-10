@@ -1,7 +1,7 @@
 {
   "name": "spec-flow",
   "description": "仕様書を対話的に生成し、実装・検証まで支援する仕様駆動開発プラグイン",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "author": {
     "name": "884js"
   },
