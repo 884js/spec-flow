@@ -104,13 +104,19 @@ progress.md のタスク進捗テーブルから集計:
 Bash: git branch --show-current
 ```
 
-現在のブランチを表示し、AskUserQuestion で確認する:
+現在のブランチを表示し、AskUserQuestion でベースブランチを確認する:
 - 「現在の {branch} から切る」
 - 「別のブランチから切る」
 
-「別のブランチから切る」が選ばれた場合、ブランチ名を入力させて `git checkout {branch}` してから作成する。
+「別のブランチから切る」が選ばれた場合、ブランチ名を入力させて `git checkout {branch}` する。
 
-`git checkout -b feature/{feature-name}` で作成する。
+次に、AskUserQuestion でブランチ名を確認する:
+- 「feature/{feature-name}」（推奨）
+- 「ブランチ名を指定する」
+
+「ブランチ名を指定する」が選ばれた場合、AskUserQuestion でブランチ名を入力させる。
+
+`git checkout -b {ブランチ名}` で作成する。
 
 ---
 
@@ -183,7 +189,7 @@ AskUserQuestion で手動検証の結果を確認する:
 3. ユーザーに確認
 4. Draft PR にするか確認
 5. 未コミットの変更があればコミットを提案
-6. `git push -u origin feature/{feature-name}` → `gh pr create`
+6. `git push -u origin {ブランチ名}` → `gh pr create`
 7. PR URL を提示、progress.md を更新
 
 

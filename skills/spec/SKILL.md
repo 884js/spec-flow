@@ -23,7 +23,7 @@ Step 0: モード判定（新規 / 更新）
 Step 1: リクエスト分類 + 要件ヒアリング
 Step 2: 統合分析（analyzer）
 Step 3: 方向性の確認
-Step 4: plan.md 生成 + 自己検証（writer）
+Step 4: plan.md 生成 + 自己検証（writer）+ ブラウザレビュー
 Step 5: 次のアクション提示
 ```
 
@@ -162,7 +162,7 @@ AskUserQuestion で次の選択肢を提示する:
 
 ---
 
-## Step 4: plan.md 生成 + 自己検証（writer）
+## Step 4: plan.md 生成 + 自己検証 + ブラウザレビュー
 
 ### 4-a. plan.md 生成
 
