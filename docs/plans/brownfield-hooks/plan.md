@@ -3,7 +3,7 @@ title: "feat: Brownfield検証 + Hooksフェーズ遷移"
 feature-name: "brownfield-hooks"
 status: done
 created: 2026-03-10
-updated: 2026-03-10
+updated: 2026-03-11
 ---
 
 # Brownfield検証 + Hooksフェーズ遷移
@@ -30,6 +30,7 @@ updated: 2026-03-10
 - spec スキルの方向性サマリに影響分析の提示を追加
 - check スキルの検証観点に既存コード影響を追加
 - phase-detector.sh の新規作成（フェーズ完了検知 + 次アクション提案）
+- skill-tracker.sh の機能を phase-detector.sh に統合し、skill-tracker.sh を廃止
 - hooks.json への PostToolUse フック追加
 
 ### やらないこと
@@ -78,10 +79,14 @@ sequenceDiagram
 sequenceDiagram
     participant Claude as Claude Code
     participant Hook as phase-detector.sh
+    participant State as 状態ファイル
     participant File as progress.md / result.md
 
+    Note over Claude,Hook: PreToolUse (Skill) 発火
+    Hook->>State: スキル名を状態ファイルに保存
+
     Claude->>File: Write/Edit で更新
-    Note over Claude,Hook: PostToolUse 発火
+    Note over Claude,Hook: PostToolUse (Write/Edit) 発火
     Hook->>Hook: stdin から書き込み先パスを取得
     Hook->>File: 対象ファイルを読み込み
     alt progress.md で全タスク完了
@@ -93,6 +98,13 @@ sequenceDiagram
     else 対象外ファイル
         Hook-->>Claude: （出力なし）
     end
+
+    Note over Claude,Hook: UserPromptSubmit 発火
+    Hook->>State: スキル状態 + フェーズ状態を読み込み
+    Hook-->>Claude: コンテキスト注入
+
+    Note over Claude,Hook: SessionEnd 発火
+    Hook->>State: 状態ファイル削除
 ```
 
 ## 設計判断
@@ -100,7 +112,7 @@ sequenceDiagram
 | 判断事項 | 選択 | 理由 | 検討した代替案 |
 |---------|------|------|--------------|
 | analyzer の変更方法 | output フォーマットのみ拡張 | analyzer.md は出力フォーマットに従って自動的にセクションを埋める設計。本体変更不要 | analyzer.md に Step 追加 — 不要な複雑化 |
-| phase-detector の分離 | skill-tracker.sh と別ファイル | 責務が異なる（セッション追跡 vs フェーズ検知） | skill-tracker.sh に統合 — 責務混在で保守性低下 |
+| phase-detector の分離 | phase-detector.sh に統合（skill-tracker.sh を廃止） | どちらも spec-flow のワークフロー状態を Claude に注入する同一目的。1ファイルに統合して保守性を向上 | 別ファイルのまま維持 — 同一目的のフックが分散し保守コスト増 |
 | フェーズ検知の方式 | ファイル読み込み方式 | tool_input にはファイル内容が含まれないため、対象ファイルを直接読む必要がある | tool_input パース — Edit の場合は差分しか見えない |
 | hook イベント | PostToolUse | ファイル書き込み完了後に検知する必要がある | PreToolUse — 書き込み前なのでファイル内容が古い |
 | Living document 不採用 | 導入しない | spec-flow は「仕様→実装」の一方向。コード変更で仕様を自動更新すると仕様の権威性が崩れる | Kiro 方式の自動更新 — 思想と矛盾 |
@@ -112,6 +124,7 @@ sequenceDiagram
 - analyzer の出力にセクション追加 → spec スキルの Step 3 が新セクションを参照
 - verifier の出力に分類追加 → check スキルの result.md に新分類が含まれる
 - hooks.json に PostToolUse 追加 → 全 Write/Edit 操作で phase-detector.sh が実行される
+- skill-tracker.sh の廃止 → hooks.json の skill-tracker エントリを phase-detector に置換
 
 ### リスク
 
@@ -126,7 +139,7 @@ sequenceDiagram
 graph TD
     T1[#1 analyzer 出力フォーマット拡張] --> T2[#2 spec Step 3 拡張]
     T3[#3 verifier 出力フォーマット拡張] --> T4[#4 check 検証観点追加]
-    T5[#5 phase-detector.sh 新規作成] --> T6[#6 hooks.json 更新]
+    T5[#5 phase-detector.sh 新規作成 + skill-tracker 統合] --> T6[#6 hooks.json 更新]
 ```
 
 ### タスク一覧
@@ -137,8 +150,8 @@ graph TD
 | 2 | spec Step 3 の方向性サマリに「既存コードへの影響」提示を追加 | `skills/spec/SKILL.md` | S | #1 |
 | 3 | verifier 出力フォーマットに「既存コード副作用」分類追加 | `agents/verifier/references/formats/output.md` | S | - |
 | 4 | check の verifier 呼び出しに「既存コード影響」検証観点を追加 | `skills/check/SKILL.md` | S | #3 |
-| 5 | phase-detector.sh を新規作成 | `hooks/phase-detector.sh` | M | - |
-| 6 | hooks.json に PostToolUse フックを追加 | `hooks/hooks.json` | S | #5 |
+| 5 | phase-detector.sh を新規作成（skill-tracker.sh の機能を統合） | `hooks/phase-detector.sh`, `hooks/skill-tracker.sh`（削除） | M | - |
+| 6 | hooks.json を更新（skill-tracker エントリを phase-detector に置換） | `hooks/hooks.json` | S | #5 |
 
 > 見積基準: S(〜1h), M(1-3h), L(3h〜)
 
@@ -163,12 +176,14 @@ graph TD
 | 2 | result.md NEEDS_FIX 時に /spec 提案が出力される | shell | `hooks/phase-detector.sh` |
 | 3 | result.md PASS 時にマージ提案が出力される | shell | `hooks/phase-detector.sh` |
 | 4 | 対象外ファイルの書き込み時に何も出力されない | shell | `hooks/phase-detector.sh` |
+| 5 | PreToolUse (Skill) でスキル名が状態ファイルに保存される | shell | `hooks/phase-detector.sh` |
+| 6 | UserPromptSubmit でスキル状態 + フェーズ状態が出力される | shell | `hooks/phase-detector.sh` |
+| 7 | SessionEnd で状態ファイルが削除される | shell | `hooks/phase-detector.sh` |
 
 ### ビルド確認
 
 ```bash
 bash -n hooks/phase-detector.sh  # 構文チェック
-bash -n hooks/skill-tracker.sh   # 既存スクリプト構文チェック
 ```
 
 ### 手動検証チェックリスト
