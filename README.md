@@ -19,10 +19,12 @@ Guides you from requirements hearing through design, implementation, and verific
                +----------------+
 
 fix can be invoked independently at any time
+list can be invoked at any time as a navigation hub
 ```
 
 | Step | Skill | Role |
 |------|-------|------|
+| - | `/spec-flow:list` | Displays all plans with status and lets you navigate to any skill |
 | 0 | `/spec-flow:research` | Technical investigation → research.md generation. Supports codebase analysis and web research |
 | 1 | `/spec-flow:spec` | Requirements hearing → integrated analysis → direction confirmation → plan.md generation → browser review (Annotation Cycle) → progress.md generation |
 | 2 | `/spec-flow:build` | Branch creation → task-by-task implementation → build verification → PR creation, all guided by plan.md |
@@ -30,6 +32,14 @@ fix can be invoked independently at any time
 | - | `/spec-flow:fix` | Root cause investigation with no speculative fixes allowed. Supports feature mode and standalone mode |
 
 ## Skills
+
+### list
+
+Displays all plans under `docs/plans/` with status (in progress / not started / spec only / completed / verified) and lets you select a plan to edit, build, research, or check. Plans are sorted by priority — in-progress and not-started plans appear first. Supports pagination for large plan lists.
+
+```
+/spec-flow:list
+```
 
 ### spec
 
@@ -101,7 +111,7 @@ Results are automatically detected by `/spec` when creating a new spec.
 
 ```
 skills/          ← User-facing entry points (orchestration)
-  spec/build/check/fix/research
+  list/spec/build/check/fix/research
 
 agents/          ← Backend agents invoked via Task()
   analyzer/      ← Project-wide integrated analysis
