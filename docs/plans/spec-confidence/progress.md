@@ -17,22 +17,21 @@ docs:
 
 ## 現在の状況
 
-仕様策定が完了し、実装未着手の状態。plan.md にて全6タスクを定義済み。brownfield-hooks ブランチとの競合リスクがあるため、マージ後の作業開始を推奨。
+全5タスク実装完了。ビルド確認待ち。
 
 ## 次にやること
 
-タスク #1（analyzer output フォーマット変更）と #2（plan.md フォーマット変更）は依存なしのため並行着手可能。この2つから開始する。
+ビルド確認 → PR 作成。
 
 ## タスク進捗
 
 | # | タスク | 対象ファイル | 見積 | PR | リスク | 状態 |
 |---|--------|------------|------|-----|--------|------|
-| 1 | analyzer output フォーマットに「確認事項」「追加検討事項」セクションを追加 | `agents/analyzer/references/formats/output.md` | S | - | - | - |
-| 2 | plan.md フォーマットに「確認事項」セクション定義を追加 + 省略ルール更新 | `agents/writer/references/formats/plan.md` | S | - | - | - |
-| 3 | plan.md 出力例に確認事項セクションの例を追加 | `agents/writer/references/examples/plan.md` | S | - | - | - |
-| 4 | spec SKILL.md の Step 2 に確認事項収集の指示を追加 | `skills/spec/SKILL.md` | S | - | - | - |
-| 5 | spec SKILL.md の Step 3 に観点チェック（3-b）を追加 | `skills/spec/SKILL.md` | S | - | - | - |
-| 6 | spec SKILL.md の Step 4 に確認事項の writer 引き渡しを追加 | `skills/spec/SKILL.md` | S | - | - | - |
+| 1 | analyzer output フォーマットに「確認事項」「追加検討事項」セクションを追加（4観点カテゴリのチェック指示 + 根拠必須化ルールを含む） | `agents/analyzer/references/formats/output.md` | S | - | - | ✓ |
+| 2 | plan.md フォーマットに「確認事項」「追加検討事項」セクション定義を追加 + 省略ルール更新 | `agents/writer/references/formats/plan.md` | S | - | - | ✓ |
+| 3 | plan.md 出力例に確認事項・追加検討事項セクションの例を追加 | `agents/writer/references/examples/plan.md` | S | - | - | ✓ |
+| 4 | spec SKILL.md の Step 2 プロンプトに確認事項と追加検討事項の定義・分離指示・4観点カテゴリを明記 | `skills/spec/SKILL.md` | S | - | - | ✓ |
+| 5 | spec SKILL.md の Step 3 に確認事項・追加検討事項の writer 引き渡しを追加 | `skills/spec/SKILL.md` | S | - | - | ✓ |
 
 > タスク定義の詳細は [plan.md](./plan.md) を参照
 
