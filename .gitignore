@@ -1,3 +1,4 @@
 *-workspace
 comments.json
 plan.md.bak
+__pycache__/

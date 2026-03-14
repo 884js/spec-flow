@@ -223,7 +223,7 @@ AskUserQuestion で選択肢を提示する:
 - 「ブラウザでレビューする」→ 以下のサイクルを開始
 - 「スキップして次へ」→ Step 4 へ
 
-**サイクル（ファイルポーリングループ）**:
+**サイクル（SSE イベント待機）**:
 
 1. サーバーの起動（ロックファイルチェック付き）:
 ```
@@ -249,15 +249,20 @@ stdout から `PORT:{port}` を取得する。
 Bash: open http://localhost:{port}
 ```
 
-3. ファイルポーリングループ: `docs/plans/{feature-name}/` 内のファイルを2秒間隔で監視する。
+3. SSE イベント待機: フォアグラウンドの Bash で `curl -N` + `grep -m 1` を実行する。イベント受信で即座に返る。
 
 ```
-Bash: while true; do if [ -f "docs/plans/{feature-name}/review-done.flag" ]; then echo "REVIEW_DONE"; break; elif [ -f "docs/plans/{feature-name}/comments.json" ]; then echo "COMMENTS_FOUND"; break; fi; sleep 2; done
+Bash(timeout: 600000): curl -s -N http://localhost:{port}/api/plans/{feature-name}/events | grep --line-buffered -m 1 "^event: \(comments_saved\|review_done\)"
 ```
+
+出力を解析する:
+- `event: comments_saved` → コメント処理へ
+- `event: review_done` → レビュー完了処理へ
+- 出力なし（タイムアウト等）→ 再接続案内へ
 
 結果に応じて処理を分岐:
 
-- **`COMMENTS_FOUND`** → コメントが保存された:
+- **`comments_saved`** → コメントが保存された:
   1. comments.json を読み込む:
   ```
   Read docs/plans/{feature-name}/comments.json
@@ -280,15 +285,21 @@ Bash: while true; do if [ -f "docs/plans/{feature-name}/review-done.flag" ]; the
   ```
   Bash: rm -f docs/plans/{feature-name}/comments.json
   ```
-  5. 修正サマリをユーザーに通知。ブラウザは自動的にポーリングで差分ハイライト付きリロードされる。
-  6. ファイルポーリングループに戻る（ステップ3）。
+  5. 修正サマリをユーザーに通知。ブラウザは SSE 経由で plan_updated イベントを受信し、差分ハイライト付きで自動リロードされる。
+  6. SSE イベント待機に戻る（ステップ3）。
 
-- **`REVIEW_DONE`** → レビュー完了:
+- **`review_done`** → レビュー完了:
   1. 一時ファイルをクリーンアップ:
   ```
   Bash: rm -f docs/plans/{feature-name}/comments.json docs/plans/{feature-name}/plan.md.bak docs/plans/{feature-name}/review-done.flag
   ```
   2. Step 4 へ進む。
+
+- **タイムアウト/切断** → 再接続案内:
+  1. ユーザーに通知: 「SSE 接続がタイムアウトしました。ブラウザでレビューを続行中の場合は、再接続してください。」
+  2. AskUserQuestion で選択肢を提示する:
+     - 「再接続する」→ SSE イベント待機に戻る（ステップ3）
+     - 「レビュー完了」→ クリーンアップして Step 4 へ
 
 ---
 

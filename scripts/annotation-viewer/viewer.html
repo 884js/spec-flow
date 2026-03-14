@@ -365,6 +365,22 @@
     vertical-align: middle;
   }
 
+  .diff-removed {
+    background: #f8d7da;
+    border-left: 3px solid #dc3545;
+    padding-left: 6px;
+    margin-left: -9px;
+    text-decoration: line-through;
+    opacity: 0.7;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .diff-removed {
+      background: #3a1b1b;
+      border-left-color: #f85149;
+    }
+  }
+
   /* Spinner */
   .spinner {
     text-align: center;
@@ -420,10 +436,10 @@ let tabs = []; // [{feature, planDir, title}]
 let activeFeature = null;
 // Per-tab comments: {feature: [{sectionHeading, selectedText, comment}]}
 const tabComments = {};
-// Per-tab last known timestamps for polling
-const tabTimestamps = {};
-let pollStatusInterval = null;
-let pollPlansInterval = null;
+// Per-tab EventSource connections: {feature: EventSource}
+const featureEventSources = {};
+// Debounce timer for plan_list_updated (all SSE connections fire the same event)
+let refreshTabsTimer = null;
 
 // --- Init ---
 async function init() {
@@ -431,12 +447,6 @@ async function init() {
   mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' });
 
   await refreshTabs();
-
-  // Start polling for plan list changes (tab add/remove)
-  pollPlansInterval = setInterval(refreshTabs, 5000);
-
-  // Start polling for plan content changes
-  pollStatusInterval = setInterval(pollPlanStatus, 2000);
 }
 
 async function refreshTabs() {
@@ -450,10 +460,13 @@ async function refreshTabs() {
 
   tabs = newTabs;
 
-  // Initialize comment arrays for new tabs
+  // Initialize comment arrays and SSE connections for new tabs
   for (const tab of tabs) {
     if (!tabComments[tab.feature]) {
       tabComments[tab.feature] = [];
+    }
+    if (!featureEventSources[tab.feature]) {
+      connectSSE(tab.feature);
     }
   }
 
@@ -461,7 +474,10 @@ async function refreshTabs() {
   for (const f of oldFeatures) {
     if (!newFeatures.has(f)) {
       delete tabComments[f];
-      delete tabTimestamps[f];
+      if (featureEventSources[f]) {
+        featureEventSources[f].close();
+        delete featureEventSources[f];
+      }
     }
   }
 
@@ -568,30 +584,35 @@ function renderExistingComments(feature) {
 
 function applyDiffHighlights(oldText, newText) {
   const diff = Diff.diffLines(oldText, newText);
+  const content = document.getElementById('content');
+  const newLines = newText.split('\n');
+
+  // Track added lines (for green highlight on rendered blocks)
   const addedLines = new Set();
+  let addedCount = 0;
+  let removedCount = 0;
   let lineNum = 0;
   for (const part of diff) {
-    if (part.removed) continue;
     const lines = part.value.split('\n');
     const count = part.value.endsWith('\n') ? lines.length - 1 : lines.length;
     if (part.added) {
-      for (let i = 0; i < count; i++) {
-        addedLines.add(lineNum + i);
-      }
+      addedCount += count;
+      for (let i = 0; i < count; i++) addedLines.add(lineNum + i);
+      lineNum += count;
+    } else if (part.removed) {
+      removedCount += count;
+    } else {
+      lineNum += count;
     }
-    lineNum += count;
   }
 
-  if (addedLines.size === 0) return;
+  if (addedCount + removedCount === 0) return;
 
-  const newLines = newText.split('\n');
-  const content = document.getElementById('content');
-
+  // Highlight added blocks (green) — existing behavior
   const blocks = content.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6, tr, blockquote, pre');
   for (const block of blocks) {
     const blockText = block.textContent.trim();
     if (!blockText) continue;
-
     const isChanged = newLines.some((line, idx) => {
       if (!addedLines.has(idx)) return false;
       const trimmed = line.replace(/^[#\-*>|\s]+/, '').replace(/\|/g, ' ').replace(/\s+/g, ' ').trim();
@@ -599,15 +620,56 @@ function applyDiffHighlights(oldText, newText) {
       const normalizedBlock = blockText.replace(/\s+/g, ' ');
       return normalizedBlock.includes(trimmed) || trimmed.split(/\s+/).filter(w => w.length > 3).every(w => normalizedBlock.includes(w));
     });
+    if (isChanged) block.classList.add('diff-added');
+  }
 
-    if (isChanged) {
-      block.classList.add('diff-added');
+  // Insert removed blocks (red) inline at their approximate position
+  for (let partIdx = 0; partIdx < diff.length; partIdx++) {
+    const part = diff[partIdx];
+    if (!part.removed) continue;
+    const removedText = part.value.replace(/\n$/, '');
+    if (!removedText.trim()) continue;
+
+    // Find the next non-removed part to locate insertion point
+    let anchorText = null;
+    for (let i = partIdx + 1; i < diff.length; i++) {
+      if (!diff[i].removed) {
+        const firstLine = diff[i].value.split('\n')[0].replace(/^[#\-*>|\s]+/, '').replace(/\s+/g, ' ').trim();
+        if (firstLine.length > 3) { anchorText = firstLine; break; }
+      }
+    }
+
+    // Create the removed block element
+    const removedEl = document.createElement('div');
+    removedEl.className = 'diff-removed';
+    removedEl.textContent = removedText.replace(/^[#\-*>|\s]+/gm, '').replace(/\n/g, ' ').trim();
+
+    // Find anchor in DOM and insert before it
+    let inserted = false;
+    if (anchorText) {
+      for (const block of blocks) {
+        const bt = block.textContent.replace(/\s+/g, ' ').trim();
+        if (bt.includes(anchorText) || anchorText.split(/\s+/).filter(w => w.length > 3).every(w => bt.includes(w))) {
+          block.parentNode.insertBefore(removedEl, block);
+          inserted = true;
+          break;
+        }
+      }
+    }
+    if (!inserted) {
+      // Append at end if no anchor found
+      content.appendChild(removedEl);
     }
   }
 
+  // Badge
+  document.querySelectorAll('.diff-badge').forEach(el => el.remove());
+  const parts = [];
+  if (addedCount > 0) parts.push(`+${addedCount}`);
+  if (removedCount > 0) parts.push(`-${removedCount}`);
   const badge = document.createElement('span');
   badge.className = 'diff-badge';
-  badge.textContent = `${addedLines.size} lines changed`;
+  badge.textContent = parts.join(' ');
   document.querySelector('.header-actions').prepend(badge);
 }
 
@@ -767,15 +829,6 @@ async function submitComments() {
   // Clear comments for this tab
   tabComments[activeFeature] = [];
   updateCount();
-
-  // Record current timestamp so polling can detect change
-  try {
-    const statusRes = await fetch(`/api/plans/${activeFeature}/status`);
-    const statusData = await statusRes.json();
-    tabTimestamps[activeFeature] = statusData.lastModified;
-  } catch (e) {
-    // Will be picked up by polling
-  }
 }
 
 async function finishReview() {
@@ -788,7 +841,10 @@ async function finishReview() {
 
   // Remove this tab
   delete tabComments[activeFeature];
-  delete tabTimestamps[activeFeature];
+  if (featureEventSources[activeFeature]) {
+    featureEventSources[activeFeature].close();
+    delete featureEventSources[activeFeature];
+  }
 
   const removedFeature = activeFeature;
   tabs = tabs.filter(t => t.feature !== removedFeature);
@@ -807,26 +863,26 @@ async function finishReview() {
   }
 }
 
-async function pollPlanStatus() {
-  if (!activeFeature) return;
+function connectSSE(feature) {
+  const es = new EventSource(`/api/plans/${feature}/events`);
+  featureEventSources[feature] = es;
 
-  try {
-    const res = await fetch(`/api/plans/${activeFeature}/status`);
-    if (!res.ok) return;
-    const data = await res.json();
-
-    const prevTimestamp = tabTimestamps[activeFeature];
-    if (prevTimestamp && data.lastModified > prevTimestamp) {
-      // Plan was updated — reload
-      tabTimestamps[activeFeature] = data.lastModified;
-      await loadPlan(activeFeature);
+  es.addEventListener('plan_updated', async () => {
+    if (feature === activeFeature) {
+      await loadPlan(feature);
       updateCount();
-    } else if (!prevTimestamp) {
-      tabTimestamps[activeFeature] = data.lastModified;
     }
-  } catch (e) {
-    // Server may have stopped
-  }
+  });
+
+  es.addEventListener('plan_list_updated', () => {
+    // Debounce: all SSE connections receive this event, so coalesce into one refresh
+    clearTimeout(refreshTabsTimer);
+    refreshTabsTimer = setTimeout(() => refreshTabs(), 100);
+  });
+
+  es.onerror = () => {
+    // EventSource auto-reconnects; no action needed
+  };
 }
 
 // Selection-based comment tooltip
