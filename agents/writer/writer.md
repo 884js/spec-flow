@@ -168,6 +168,7 @@ Read {プロンプトで指定された plan.md}
 
 プロンプトで渡された verifier の検証結果と plan.md を統合し、result.md を生成する:
 
+- **judgment（frontmatter）**: プロンプトで渡された最終判定（PASS / PARTIAL / NEEDS_FIX）を frontmatter に記載する
 - 機能概要（plan.md の概要を元に実装の実態を記述）
 - 仕様からの変更点（verifier の不一致テーブルから抽出）
 - ロジック（仕様のフロー図を含む）
