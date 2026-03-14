@@ -223,46 +223,63 @@ AskUserQuestion で選択肢を提示する:
 - 「ブラウザでレビューする」→ 以下のサイクルを開始
 - 「スキップして次へ」→ Step 4 へ
 
-**サイクル（ユーザーが満足するまで繰り返し）**:
+**サイクル（イベントベースループ）**:
 
-1. ローカルサーバーを起動:
+1. サーバーの起動（ロックファイルチェック付き）:
+```
+Bash: cat /tmp/annotation-viewer.lock 2>/dev/null
+```
+
+- ロックファイルが存在し、そのポートでサーバーが応答する場合 → サーバー起動をスキップ、ポート番号を記録
+- それ以外 → サーバーを新規起動:
 ```
 Bash(run_in_background): python3 ${CLAUDE_PLUGIN_ROOT}/scripts/annotation-viewer/server.py docs/plans/{feature-name}
 ```
 stdout から `PORT:{port}` を取得する。
+
+- サーバーが既に起動中だった場合はプラン登録のみ行う（server.py が自動的に `EVENT:registered:{feature-name}` を出力して終了する）
 
 2. ブラウザを開く:
 ```
 Bash: open http://localhost:{port}
 ```
 
-3. `TaskOutput(block=true)` でバックグラウンドタスク（サーバー）の停止を待つ。ユーザーがブラウザで「レビュー完了」または「コメントを送信して修正依頼」を押すとサーバーが自動停止する。
+3. イベントループ: `TaskOutput(block=true)` でサーバーの stdout イベントを待つ。
 
-4. コメントを確認:
-```
-Read docs/plans/{feature-name}/comments.json
-```
+イベントの種類に応じて処理を分岐:
 
-コメントが0件 → 一時ファイルをクリーンアップしてレビュー完了。Step 4 へ。
-```
-Bash: rm -f docs/plans/{feature-name}/comments.json docs/plans/{feature-name}/plan.md.bak
-```
+- **`EVENT:comments_saved:{feature-name}`** → コメントが保存された:
+  1. comments.json を読み込む:
+  ```
+  Read docs/plans/{feature-name}/comments.json
+  ```
+  2. 修正前の plan.md をバックアップ:
+  ```
+  Bash: cp docs/plans/{feature-name}/plan.md docs/plans/{feature-name}/plan.md.bak
+  ```
+  3. writer に修正を委譲:
+  ```
+  Task(subagent_type: writer):
+    プロンプト: 「plan.md をコメントに基づいて修正してください。
+    ドキュメント種別: plan-revision
+    plan.md: docs/plans/{feature-name}/plan.md
+    progress.md: docs/plans/{feature-name}/progress.md
+    comments.json: docs/plans/{feature-name}/comments.json
+    注意: plan.md の実装タスクを変更した場合（追加・削除・変更）は、progress.md のタスク進捗テーブルも同期すること。新規タスクは状態 `-` で追加する。」
+  ```
+  4. comments.json を削除:
+  ```
+  Bash: rm -f docs/plans/{feature-name}/comments.json
+  ```
+  5. 修正サマリをユーザーに通知。ブラウザは自動的にポーリングで差分ハイライト付きリロードされる。
+  6. イベントループに戻る（ステップ3）。
 
-5. コメントが1件以上 → 修正前の plan.md をバックアップしてから writer に委譲:
-```
-Bash: cp docs/plans/{feature-name}/plan.md docs/plans/{feature-name}/plan.md.bak
-```
-```
-Task(subagent_type: writer):
-  プロンプト: 「plan.md をコメントに基づいて修正してください。
-  ドキュメント種別: plan-revision
-  plan.md: docs/plans/{feature-name}/plan.md
-  progress.md: docs/plans/{feature-name}/progress.md
-  comments.json: docs/plans/{feature-name}/comments.json
-  注意: plan.md の実装タスクを変更した場合（追加・削除・変更）は、progress.md のタスク進捗テーブルも同期すること。新規タスクは状態 `-` で追加する。」
-```
-
-6. 修正サマリをユーザーに通知し、自動的にステップ1に戻る（サーバー再起動 → ブラウザ再表示）。次回のレビューでは変更箇所がハイライト表示される。AskUserQuestion は行わない。コメント0件で送信されるまで自動ループする。
+- **`EVENT:review_done:{feature-name}`** → レビュー完了:
+  1. 一時ファイルをクリーンアップ:
+  ```
+  Bash: rm -f docs/plans/{feature-name}/comments.json docs/plans/{feature-name}/plan.md.bak
+  ```
+  2. Step 4 へ進む。
 
 ---
 
