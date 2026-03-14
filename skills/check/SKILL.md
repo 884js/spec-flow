@@ -133,7 +133,15 @@ plan.md の受入条件を1つずつ検証:
 
 ## Step 4: result.md 生成 + 検証レポート
 
-### 4-a. result.md の生成
+### 4-a. 最終判定
+
+| 判定 | 基準 |
+|------|------|
+| **PASS** | Critical 0件 & Warning 0件 |
+| **PARTIAL** | Critical 0件、Warning のみ |
+| **NEEDS_FIX** | Critical 1件以上 |
+
+### 4-b. result.md の生成
 
 writer エージェントに生成を依頼する:
 
@@ -144,16 +152,9 @@ Task(subagent_type: writer):
   plan.md: docs/plans/{feature-name}/plan.md
   verifier 結果: {Step 1 の結果}
   受入条件検証: {Step 3 の結果}
+  judgment: {Step 4-a で算出した最終判定（PASS / PARTIAL / NEEDS_FIX）}
   出力先: docs/plans/{feature-name}/result.md」
 ```
-
-### 4-b. 最終判定
-
-| 判定 | 基準 |
-|------|------|
-| **PASS** | Critical 0件 & Warning 0件 |
-| **PARTIAL** | Critical 0件、Warning のみ |
-| **NEEDS_FIX** | Critical 1件以上 |
 
 ### 4-c. 次のアクション
 

@@ -243,7 +243,10 @@ Bash: open http://localhost:{port}
 Read docs/plans/{feature-name}/comments.json
 ```
 
-コメントが0件 → レビュー完了。Step 5 へ。
+コメントが0件 → 一時ファイルをクリーンアップしてレビュー完了。Step 4 へ。
+```
+Bash: rm -f docs/plans/{feature-name}/comments.json docs/plans/{feature-name}/plan.md.bak
+```
 
 5. コメントが1件以上 → 修正前の plan.md をバックアップしてから writer に委譲:
 ```

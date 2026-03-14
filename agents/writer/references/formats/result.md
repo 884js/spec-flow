@@ -2,9 +2,19 @@
 
 検証結果を統合した最終仕様ドキュメント。plan.md と実装コードの突合結果をまとめる。
 
+## frontmatter
+
+| フィールド | 必須 | 説明 |
+|-----------|------|------|
+| judgment | ○ | 最終判定。`PASS`（Critical 0件 & Warning 0件）/ `PARTIAL`（Critical 0件、Warning のみ）/ `NEEDS_FIX`（Critical 1件以上） |
+
 ## セクション構成
 
 ```markdown
+---
+judgment: {PASS / PARTIAL / NEEDS_FIX}
+---
+
 # {機能名} — 最終仕様（Result）
 
 > 生成日: {日付}

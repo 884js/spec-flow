@@ -1,19 +1,19 @@
 ---
 name: build
-description: "Implements features based on plan.md. Handles feature branch creation, task-by-task coding with dependency order, build verification, and PR creation. Supports pause/resume via progress.md state tracking. Detects spec gaps and prompts for spec update. Use when starting implementation."
+description: "Implements features based on plan.md. Handles feature branch creation, task-by-task coding with dependency order, and build verification. Supports pause/resume via progress.md state tracking. Detects spec gaps and prompts for spec update. Use when starting implementation."
 allowed-tools: Read Glob Grep Write Edit Task Bash
 metadata:
-  triggers: build, implement, 実装開始, コード実装, PR作成, 実装再開
+  triggers: build, implement, 実装開始, コード実装, 実装再開
 ---
 
 # 実装（Build）
 
-plan.md に沿って実装を進め、PR を作成する。
+plan.md に沿って実装を進める。
 progress.md によるタスク状態管理で中断・再開をサポートする。
 
 入力: `docs/plans/{feature-name}/plan.md`
 状態管理: `docs/plans/{feature-name}/progress.md`
-出力: 実装コード + PR
+出力: 実装コード
 
 **パスルール**: `docs/plans/{feature-name}/` はカレントディレクトリ直下。`{feature-name}` は英語の kebab-case。パス区切り不可
 
