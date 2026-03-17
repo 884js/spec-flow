@@ -1,20 +1,16 @@
-# result.md フォーマット定義
+# result フォーマット定義
 
-検証結果を統合した最終仕様ドキュメント。plan.md と実装コードの突合結果をまとめる。
+検証結果を統合した最終仕様ドキュメント。plan と実装コードの突合結果をまとめる。
 
-## frontmatter
+**データ格納**: result 本文は `db.sh create-result` で DB に格納する。judgment（PASS / PARTIAL / NEEDS_FIX）は `--judgment` パラメータとして DB カラムに格納する。frontmatter は不要。
 
-| フィールド | 必須 | 説明 |
-|-----------|------|------|
-| judgment | ○ | 最終判定。`PASS`（Critical 0件 & Warning 0件）/ `PARTIAL`（Critical 0件、Warning のみ）/ `NEEDS_FIX`（Critical 1件以上） |
+- `PASS`: Critical 0件 & Warning 0件
+- `PARTIAL`: Critical 0件、Warning のみ
+- `NEEDS_FIX`: Critical 1件以上
 
 ## セクション構成
 
 ```markdown
----
-judgment: {PASS / PARTIAL / NEEDS_FIX}
----
-
 # {機能名} — 最終仕様（Result）
 
 > 生成日: {日付}
@@ -22,17 +18,17 @@ judgment: {PASS / PARTIAL / NEEDS_FIX}
 
 ## 機能概要
 
-{plan.md の概要を元に、実装の実態を1-3文で記述}
+{plan の概要を元に、実装の実態を1-3文で記述}
 
 ## 仕様からの変更点
 
-{差異なし: 「plan.md 通りに実装。変更なし。」}
+{差異なし: 「plan 通りに実装。変更なし。」}
 
 {差異あり: ユーザーから見た振る舞いが変わるものを変更ごとに以下の形式で記述}
 
 ### {振る舞いの変化を1文で。主語は機能主体にし、技術用語を主語にしない}
 
-- **plan.md**: {仕様ではどうなる想定だったか — 機能・振る舞いとして}
+- **plan**: {仕様ではどうなる想定だったか — 機能・振る舞いとして}
 - **実装**: {実際にはどう動くか — 機能・振る舞いとして}
 - **経緯**: {なぜこの変更が必要になったか。debug 起因の場合は該当ファイルを参照}
 - **技術詳細**: {関連ファイル・関数名など — 必要に応じて}

@@ -1,6 +1,6 @@
 ---
 name: fix
-description: "Investigates root causes of runtime issues by tracing actual execution flows. Prohibits speculative fixes until cause is identified. Operates in feature mode (with plan.md) or standalone mode (without). Use when encountering bugs, errors, or unexpected behavior."
+description: "Investigates root causes of runtime issues by tracing actual execution flows. Prohibits speculative fixes until cause is identified. Operates in feature mode (with plan) or standalone mode (without). Use when encountering bugs, errors, or unexpected behavior."
 allowed-tools: Read Glob Grep Write Edit Task Bash WebSearch WebFetch
 metadata:
   triggers: fix, troubleshoot, 不具合診断, 原因調査, 不具合修正, 動かない, 期待と違う, エラー, バグ
@@ -26,10 +26,14 @@ Step 3: 修正方針の提示
 
 ## Step 0: コンテキスト判定
 
-- **feature モード**: `docs/plans/{feature-name}/plan.md` がある場合。仕様を参照しながら調査する
-- **standalone モード**: plan.md なし。コードベースのみで調査する
+```
+Bash "${CLAUDE_PLUGIN_ROOT}/scripts/db.sh list-plans"
+```
 
-$ARGUMENTS に feature-name があればそのディレクトリを使用。なければ `Glob docs/plans/**/plan.md` で候補を探し、AskUserQuestion で選択させる。候補0件なら standalone で進行。
+- **feature モード**: $ARGUMENTS の feature-name に該当するプランがある場合。`db.sh get-body` で仕様を参照しながら調査する
+- **standalone モード**: 該当プランなし。コードベースのみで調査する
+
+$ARGUMENTS に feature-name があればそれを使用。なければ一覧から AskUserQuestion で選択させる。候補0件なら standalone で進行。
 
 ---
 

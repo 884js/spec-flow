@@ -3,7 +3,7 @@ title: "feat: プラン管理の SQLite DB フル移行"
 feature-name: "sqlite-plan-storage"
 status: done
 created: 2026-03-14
-updated: 2026-03-14
+updated: 2026-03-16
 ---
 
 # プラン管理の SQLite DB フル移行（プロジェクト横断対応）
@@ -19,7 +19,7 @@ updated: 2026-03-14
 | 1 | plan.md 本文の格納方式 | Base64 エンコードで DB に格納。`db.sh get-body` でデコード取得可能 | 確認済み |
 | 2 | Annotation Viewer の対応方式 | `server.py` を Python sqlite3 モジュールによる DB 直接読み取りに改修 | 確認済み |
 | 3 | Git 差分の喪失への対応 | Git で仕様変更を追跡しない。DB が唯一のデータソース。変更履歴は DB の updated_at で追跡 | 確認済み |
-| 4 | 既存 19 プランのマイグレーション | `migrate-md-to-db.sh` で一括インポート。失敗時は md ファイルが残っているのでロールバック可能 | 確認済み |
+| 4 | 既存 20 プランのマイグレーション | `migrate-md-to-db.sh` で一括インポート。失敗時は md ファイルが残っているのでロールバック可能 | 確認済み |
 | 5 | 同時実行の制御 | WAL モード + busy_timeout=5000 で対応 | 確認済み |
 | 6 | ファイルベース推論からの移行 | `.claude/rules/plugin-structure.md` はプロジェクトのフェーズ管理ルールを定義するファイル。現在「state.json は使わない。plan.md + progress.md の存在でフェーズを推論する」と記載されている。DB 移行後はファイル存在ではなく DB レコードの存在でフェーズを推論するため、このルールを DB ベースに更新する必要がある | 確認済み |
 | 7 | DB のプロジェクト横断配置 | DB を `~/.claude/spec-flow.db` に配置し、`projects` テーブルで複数プロジェクトを管理する。各テーブルに `project_id` FK を追加。プロジェクトの .gitignore 変更は不要（DB はホームディレクトリに配置されるため） | 確認済み |
@@ -44,6 +44,8 @@ updated: 2026-03-14
 | [list-skill](../list-skill/plan.md) | /list のステータス算出ロジックが全面的に DB ベースに変更される |
 | [related-plan-linking](../related-plan-linking/plan.md) | リレーション管理が DB の plan_relations テーブルに移行される |
 | [dev-flow-improvements](../dev-flow-improvements/plan.md) | result.md の judgment フィールドが DB の results テーブルに移行される |
+| [sse-annotation-cycle](../sse-annotation-cycle/plan.md) | SSE 対応された Annotation Viewer のデータソースが DB に変更される |
+| [wider-annotation-viewer](../wider-annotation-viewer/plan.md) | UI 改修済みの Viewer が DB 対応に合わせて更新される |
 
 ## スコープ
 
@@ -54,9 +56,9 @@ updated: 2026-03-14
 - `scripts/db.sh` ヘルパースクリプトの新規作成（全サブコマンド、`--project` オプション対応）
 - progress 情報の DB 格納（plans テーブルへの mode, current_situation, next_action 等のカラム追加）
 - 全 6 スキル（list, spec, build, check, fix, research）の DB 移行
-- writer / verifier / analyzer エージェントの DB 移行
+- writer / verifier / analyzer / researcher エージェントの DB 移行
 - Annotation Viewer（`server.py`）の DB 直接読み取り対応
-- 既存 19 プランの md -> DB マイグレーションスクリプトと実行
+- 既存 20 プランの md -> DB マイグレーションスクリプトと実行
 - `.claude/rules/plugin-structure.md` の更新
 
 ### やらないこと
@@ -79,7 +81,7 @@ updated: 2026-03-14
 - [ ] AC-9: writer エージェントが plan / progress / result の生成を `db.sh` 経由で DB に書き込む
 - [ ] AC-10: verifier エージェントが `db.sh get-body` で plan 本文を取得する
 - [ ] AC-11: Annotation Viewer（`server.py`）が SQLite から直接 plan 本文を読み取り、ブラウザに表示する
-- [ ] AC-12: 既存 19 プランのマイグレーションスクリプト（`scripts/migrate-md-to-db.sh`）が存在し、全プランを DB にインポートできる
+- [ ] AC-12: 既存 20 プランのマイグレーションスクリプト（`scripts/migrate-md-to-db.sh`）が存在し、全プランを DB にインポートできる
 - [ ] AC-13: DB は `~/.claude/spec-flow.db` に配置される（プロジェクト側の .gitignore 変更は不要）
 - [ ] AC-14: スキーマ定義 SQL（`migrations/`）と `scripts/db.sh` がバージョン管理されている
 - [ ] AC-15: `db.sh register-project` でプロジェクトを DB に登録でき、`db.sh list-projects` で一覧表示できる
@@ -403,7 +405,7 @@ GROUP BY p.id
 ### 影響範囲
 
 - 全 6 スキル（list, spec, build, check, fix, research）のデータ入出力方式が変更
-- writer / verifier / analyzer エージェントのデータ入出力方式が変更
+- writer / verifier / analyzer / researcher エージェントのデータ入出力方式が変更
 - Annotation Viewer のデータソースが変更
 - `.claude/rules/plugin-structure.md` のフェーズ管理ルールが DB ベースに変更
 - 各スキルの allowed-tools に Bash が追加される
@@ -504,6 +506,7 @@ graph TD
     T20 --> T14
     T2 --> T15["#15 verifier エージェント書き換え"]
     T2 --> T16["#16 analyzer エージェント書き換え"]
+    T4 --> T21["#21 researcher エージェント書き換え"]
     T18["#18 ルール更新"]
     T7 --> T19["#19 既存プランマイグレーション実行 + 動作確認"]
 ```
@@ -527,9 +530,10 @@ graph TD
 | 14 | writer エージェント書き換え | `agents/writer/writer.md`, `agents/writer/references/formats/plan.md`, `agents/writer/references/formats/progress.md`, `agents/writer/references/formats/result.md` | L | #2, #3, #4, #20 |
 | 15 | verifier エージェント書き換え | `agents/verifier/verifier.md` | S | #2 |
 | 16 | analyzer エージェント書き換え | `agents/analyzer/analyzer.md` | S | #2 |
+| 21 | researcher エージェント書き換え | `agents/researcher/researcher.md` | S | #4 |
 | 17 | Annotation Viewer DB 対応 | `scripts/annotation-viewer/server.py` | M | #1 |
 | 18 | ルール更新 | `.claude/rules/plugin-structure.md` | S | - |
-| 19 | 既存 19 プランのマイグレーション実行 + 動作確認 | - | M | #7 |
+| 19 | 既存 20 プランのマイグレーション実行 + 動作確認 | - | M | #7 |
 | 20 | db.sh progress 操作（update-progress, get-progress） | `scripts/db.sh` | M | #2 |
 
 > 見積基準: S(~1h), M(1-3h), L(3h~)
@@ -584,7 +588,7 @@ bash -n scripts/migrate-md-to-db.sh
 - [ ] MV-9: /spec スキルで plan を生成し、DB に正しく格納されること
 - [ ] MV-10: /check スキルで verifier が `db.sh get-body` から plan 本文を取得できること
 - [ ] MV-11: Annotation Viewer（`server.py`）をブラウザで開き、DB から取得した plan 本文が正しく表示されること
-- [ ] MV-12: `scripts/migrate-md-to-db.sh` を実行し、`db.sh list-plans` で全 19 プランが表示されること
+- [ ] MV-12: `scripts/migrate-md-to-db.sh` を実行し、`db.sh list-plans` で全 20 プランが表示されること
 - [ ] MV-13: DB が `~/.claude/spec-flow.db` に配置されること（プロジェクト側の .gitignore 変更は不要）
 - [ ] MV-14: `migrations/` と `scripts/db.sh` が git 管理されていること
 - [ ] MV-15: `db.sh register-project --name test-proj --path /tmp/test` でプロジェクトが登録され、`db.sh list-projects` で一覧表示できること

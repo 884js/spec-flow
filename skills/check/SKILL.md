@@ -1,6 +1,6 @@
 ---
 name: check
-description: "Verifies implementation code matches plan.md specifications. Reports PASS / PARTIAL / NEEDS_FIX. On NEEDS_FIX, guides user back to spec update or build fix. Use after /build completion or before PR merge."
+description: "Verifies implementation code matches plan specifications. Reports PASS / PARTIAL / NEEDS_FIX. On NEEDS_FIX, guides user back to spec update or build fix. Use after /build completion or before PR merge."
 allowed-tools: Read Glob Grep Write Task Bash
 metadata:
   triggers: check, verify, validate, 仕様検証, 実装確認, 受入条件チェック
@@ -8,12 +8,12 @@ metadata:
 
 # 仕様検証（Check）
 
-plan.md と実装コードの突合検証を行い、PASS / PARTIAL / NEEDS_FIX で判定する。
+plan と実装コードの突合検証を行い、PASS / PARTIAL / NEEDS_FIX で判定する。
 
-入力: `docs/plans/{feature-name}/plan.md` + 実装コード
-出力: `docs/plans/{feature-name}/result.md`
+入力: DB 上の plan レコード + 実装コード
+出力: DB 上の result レコード
 
-**パスルール**: `docs/plans/{feature-name}/` はカレントディレクトリ直下。`{feature-name}` は英語の kebab-case
+**feature-name**: 英語の kebab-case
 
 ## 重要度レベル
 
@@ -28,7 +28,7 @@ plan.md と実装コードの突合検証を行い、PASS / PARTIAL / NEEDS_FIX 
 ```
 Step 0: 読み込み + 変更範囲の特定
 Step 1: verifier で突合検証
-Step 2: 最終判定 + result.md 生成
+Step 2: 最終判定 + result 生成
 Step 3: 次のアクション
 ```
 
@@ -37,12 +37,12 @@ Step 3: 次のアクション
 ## Step 0: 読み込み + 変更範囲の特定
 
 ```
-Read docs/plans/{feature-name}/plan.md
-Read docs/plans/{feature-name}/progress.md
+Bash "${CLAUDE_PLUGIN_ROOT}/scripts/db.sh get-body --feature {feature-name}"
+Bash "${CLAUDE_PLUGIN_ROOT}/scripts/db.sh list-tasks --feature {feature-name}"
 Bash: git diff {base-branch} --name-only
 ```
 
-全タスク未着手（`-`）なら「実装が開始されていません」と案内して終了。
+全タスク `pending` なら「実装が開始されていません」と案内して終了。
 
 ---
 
@@ -53,7 +53,8 @@ verifier に仕様・実装・受入条件の突合を一括で依頼する:
 ```
 Task(subagent_type: verifier):
   「仕様と実装の突合検証を行ってください。
-  仕様書: docs/plans/{feature-name}/plan.md
+  DB スクリプト: ${CLAUDE_PLUGIN_ROOT}/scripts/db.sh
+  feature-name: {feature-name}
   実装ファイル: {git diff の変更ファイル一覧}
   検証内容:
   - 各セクション（バックエンド・DB・フロントエンド等）の仕様と実装の突合
@@ -64,7 +65,7 @@ Task(subagent_type: verifier):
 
 ---
 
-## Step 2: 最終判定 + result.md 生成
+## Step 2: 最終判定 + result 生成
 
 | 判定 | 基準 |
 |------|------|
@@ -74,12 +75,12 @@ Task(subagent_type: verifier):
 
 ```
 Task(subagent_type: writer):
-  「result.md を生成してください。
+  「result を DB に生成してください。
   ドキュメント種別: result
-  plan.md: docs/plans/{feature-name}/plan.md
+  DB スクリプト: ${CLAUDE_PLUGIN_ROOT}/scripts/db.sh
+  feature-name: {feature-name}
   verifier 結果: {Step 1 の結果}
-  judgment: {最終判定}
-  出力先: docs/plans/{feature-name}/result.md」
+  judgment: {最終判定}」
 ```
 
 ---

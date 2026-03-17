@@ -1,16 +1,8 @@
-# 出力例: plan.md（リマインダー機能）
+# 出力例: plan（リマインダー機能）
 
-「メモアプリにリマインダー機能を追加する」という要求に対する plan.md の出力例。
+「メモアプリにリマインダー機能を追加する」という要求に対する plan の出力例。
 
 ```markdown
----
-title: "feat: リマインダー機能"
-feature-name: "reminder"
-status: done
-created: 2025-01-15
-updated: 2025-01-15
----
-
 # リマインダー機能
 
 ## 概要
@@ -36,8 +28,8 @@ updated: 2025-01-15
 
 | プラン | 関連 |
 |--------|------|
-| [notification-system](../notification-system/plan.md) | 本機能の前提。通知基盤を提供 |
-| [memo-actions](../memo-actions/plan.md) | 同じメモ編集画面のアクションバーを変更 |
+| notification-system | 本機能の前提。通知基盤を提供 |
+| memo-actions | 同じメモ編集画面のアクションバーを変更 |
 
 ## スコープ
 
