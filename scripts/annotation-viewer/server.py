@@ -19,7 +19,9 @@ import threading
 import urllib.request
 from pathlib import Path
 
-TIMEOUT_SECONDS = 30 * 60  # 30 minutes
+DEFAULT_PORT = 19840
+MAX_PORT_ATTEMPTS = 10
+IDLE_TIMEOUT = int(os.environ.get("IDLE_TIMEOUT", 7200))  # 2 hours default
 LOCK_FILE = "/tmp/annotation-viewer.lock"
 DB_PATH = os.path.expanduser("~/.claude/spec-flow.db")
 SIGNAL_DIR = "/tmp/spec-flow-review"
@@ -30,10 +32,17 @@ _timer_lock = threading.Lock()
 _server_ref = None
 
 
-def find_free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", 0))
-        return s.getsockname()[1]
+def find_available_port():
+    """Try fixed ports 19840-19849, return first available."""
+    for port in range(DEFAULT_PORT, DEFAULT_PORT + MAX_PORT_ATTEMPTS):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", port))
+                return port
+        except OSError:
+            continue
+    print("Error: All ports 19840-19849 are in use", file=sys.stderr)
+    sys.exit(1)
 
 
 def is_server_running(port):
@@ -58,15 +67,22 @@ def register_plan_remote(port, feature):
 
 
 def reset_timeout():
-    """Reset the auto-shutdown timer on activity."""
+    """Reset the idle auto-shutdown timer on activity."""
     global _timer
     with _timer_lock:
         if _timer is not None:
             _timer.cancel()
         if _server_ref is not None:
-            _timer = threading.Timer(TIMEOUT_SECONDS, _server_ref.shutdown)
+            _timer = threading.Timer(IDLE_TIMEOUT, _shutdown_server)
             _timer.daemon = True
             _timer.start()
+
+
+def _shutdown_server():
+    """Gracefully shutdown the server."""
+    if _server_ref is not None:
+        remove_lock_file()
+        _server_ref.shutdown()
 
 
 def get_db():
@@ -103,6 +119,7 @@ registry_lock = threading.Lock()
 class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
+        reset_timeout()
         if self.path == "/":
             self._serve_viewer()
         elif self.path == "/api/plans":
@@ -111,6 +128,8 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
             self._serve_plan(m.group(1))
         elif m := re.match(r"^/api/plans/([^/]+)/status$", self.path):
             self._serve_plan_status(m.group(1))
+        elif m := re.match(r"^/api/plans/([^/]+)/review-status$", self.path):
+            self._serve_review_status(m.group(1))
         else:
             self.send_error(404)
 
@@ -124,6 +143,8 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
             self._save_comments(m.group(1))
         elif m := re.match(r"^/api/plans/([^/]+)/finish$", self.path):
             self._finish_review(m.group(1))
+        elif self.path == "/api/shutdown":
+            self._shutdown()
         else:
             self.send_error(404)
 
@@ -150,18 +171,24 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
 
     def _serve_plan_list(self):
         with registry_lock:
-            features = list(plan_registry)
+            reviewing_set = set(plan_registry)
         conn = get_db()
         try:
             project_id = resolve_project_id(conn)
+            rows = conn.execute(
+                "SELECT feature_name, title, status, updated_at FROM plans WHERE project_id = ? ORDER BY updated_at DESC",
+                (project_id,),
+            ).fetchall()
             plans = []
-            for f in features:
-                row = conn.execute(
-                    "SELECT title FROM plans WHERE feature_name = ? AND project_id = ?",
-                    (f, project_id),
-                ).fetchone()
-                title = row["title"] if row else f
-                plans.append({"feature": f, "title": title})
+            for row in rows:
+                plans.append({
+                    "feature": row["feature_name"],
+                    "title": row["title"],
+                    "status": row["status"],
+                    "reviewing": row["feature_name"] in reviewing_set,
+                })
+            # Sort: reviewing first, then by original order (updated_at DESC)
+            plans.sort(key=lambda p: (not p["reviewing"],))
             self._send_json({"plans": plans})
         finally:
             conn.close()
@@ -212,10 +239,7 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
         feature = data["feature"]
         with registry_lock:
             plan_registry.discard(feature)
-            remaining = len(plan_registry)
         self._send_json({"status": "ok"})
-        if remaining == 0:
-            threading.Thread(target=self.server.shutdown, daemon=True).start()
 
     def _save_comments(self, feature):
         data = self._read_body()
@@ -257,25 +281,32 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
         print(f"EVENT:review_done:{feature}", flush=True)
         with registry_lock:
             plan_registry.discard(feature)
-            remaining = len(plan_registry)
-        if remaining == 0:
-            threading.Thread(target=self.server.shutdown, daemon=True).start()
+
+    def _serve_review_status(self, feature):
+        with registry_lock:
+            reviewing = feature in plan_registry
+        self._send_json({"reviewing": reviewing})
+
+    def _shutdown(self):
+        self._send_json({"status": "ok"})
+        threading.Thread(target=_shutdown_server, daemon=True).start()
 
     def log_message(self, format, *args):
         pass  # Suppress access logs
 
 
-def write_lock_file(port):
+def write_lock_file(port, pid):
     with open(LOCK_FILE, "w") as f:
-        f.write(str(port))
+        json.dump({"port": port, "pid": pid}, f)
 
 
 def read_lock_file():
     try:
         with open(LOCK_FILE) as f:
-            return int(f.read().strip())
-    except (FileNotFoundError, ValueError):
-        return None
+            data = json.load(f)
+            return data.get("port"), data.get("pid")
+    except (FileNotFoundError, ValueError, json.JSONDecodeError):
+        return None, None
 
 
 def remove_lock_file():
@@ -288,48 +319,56 @@ def remove_lock_file():
 def main():
     global _timer, _server_ref
 
-    if len(sys.argv) < 3 or sys.argv[1] != "--feature":
-        print("Usage: python3 server.py --feature <feature-name>", file=sys.stderr)
-        sys.exit(1)
+    # Parse args: optional --feature <name>
+    feature = None
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--feature" and i + 1 < len(args):
+            feature = args[i + 1]
+            i += 2
+        else:
+            i += 1
 
-    feature = sys.argv[2]
-
-    # Verify DB and plan exist
+    # Verify DB exists
     if not os.path.isfile(DB_PATH):
         print(f"Error: DB not found at {DB_PATH}", file=sys.stderr)
         sys.exit(1)
 
-    conn = get_db()
-    try:
-        project_id = resolve_project_id(conn)
-        row = conn.execute(
-            "SELECT id FROM plans WHERE feature_name = ? AND project_id = ?",
-            (feature, project_id),
-        ).fetchone()
-        if not row:
-            print(f"Error: Plan '{feature}' not found in DB", file=sys.stderr)
-            sys.exit(1)
-    finally:
-        conn.close()
+    if feature:
+        conn = get_db()
+        try:
+            project_id = resolve_project_id(conn)
+            row = conn.execute(
+                "SELECT id FROM plans WHERE feature_name = ? AND project_id = ?",
+                (feature, project_id),
+            ).fetchone()
+            if not row:
+                print(f"Error: Plan '{feature}' not found in DB", file=sys.stderr)
+                sys.exit(1)
+        finally:
+            conn.close()
 
     # Check if a server is already running
-    existing_port = read_lock_file()
+    existing_port, _ = read_lock_file()
     if existing_port and is_server_running(existing_port):
-        register_plan_remote(existing_port, feature)
+        if feature:
+            register_plan_remote(existing_port, feature)
+            print(f"EVENT:registered:{feature}", flush=True)
         print(f"PORT:{existing_port}", flush=True)
-        print(f"EVENT:registered:{feature}", flush=True)
         return
 
-    # Start new server
-    port = find_free_port()
-    plan_registry.add(feature)
-    write_lock_file(port)
+    # Start new server on fixed port with fallback
+    port = find_available_port()
+    if feature:
+        plan_registry.add(feature)
+    write_lock_file(port, os.getpid())
 
     server = http.server.ThreadingHTTPServer(("127.0.0.1", port), AnnotationHandler)
     _server_ref = server
 
-    # Auto-timeout to prevent zombie processes (resets on activity)
-    _timer = threading.Timer(TIMEOUT_SECONDS, server.shutdown)
+    # Idle auto-shutdown (resets on any API activity)
+    _timer = threading.Timer(IDLE_TIMEOUT, _shutdown_server)
     _timer.daemon = True
     _timer.start()
 

@@ -116,6 +116,9 @@
     cursor: pointer;
     white-space: nowrap;
     transition: color 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .tab-item:hover { color: var(--text-primary); }
@@ -124,6 +127,18 @@
     color: var(--accent);
     border-bottom-color: var(--accent);
   }
+
+  .tab-close {
+    font-size: 14px;
+    line-height: 1;
+    color: var(--text-caption);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+  .tab-close:hover { color: var(--color-danger); background: var(--bg-tab); }
 
   .btn {
     padding: 7px 18px;
@@ -406,33 +421,120 @@
 
   /* Loading */
   .loading { text-align: center; padding: 48px; color: var(--text-caption); }
+
+  /* Main layout with sidebar */
+  .main-layout {
+    display: flex;
+    height: calc(100vh - 50px);
+    overflow: hidden;
+  }
+
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: var(--bg-content);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-header {
+    padding: 12px 16px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-caption);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .sidebar-separator {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 4px 16px;
+  }
+
+  .sidebar-item {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar-item:hover { background: var(--bg-tab); }
+  .sidebar-item.active { background: var(--bg-tab); color: var(--accent); font-weight: 600; }
+
+  .sidebar-item .review-indicator {
+    color: var(--accent);
+    margin-right: 4px;
+  }
+
+  .sidebar-item .plan-status {
+    font-size: 11px;
+    color: var(--text-caption);
+    display: block;
+    margin-top: 1px;
+  }
+
+  .main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .main-area .container {
+    flex: 1;
+    overflow-y: auto;
+  }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>Plan Review</h1>
+  <h1>Plan Viewer</h1>
   <div class="header-actions">
     <span id="commentCount" class="comment-count" style="display:none">0 comments</span>
-    <button class="btn btn-primary" id="submitBtn" onclick="submitComments()" disabled>コメントを送信</button>
-    <button class="btn btn-finish" id="finishBtn" onclick="finishReview()">レビュー完了</button>
+    <button class="btn btn-primary" id="submitBtn" onclick="submitComments()" disabled style="display:none">コメントを送信</button>
+    <button class="btn btn-finish" id="finishBtn" onclick="finishReview()" style="display:none">レビュー完了</button>
   </div>
 </div>
 
-<div class="tab-bar" id="tabBar"></div>
-
-<button class="selection-tooltip" id="selectionTooltip">コメントを追加</button>
-
-<div class="container">
-  <div class="content markdown-body" id="content">
-    <div class="loading">読み込み中...</div>
+<div class="main-layout">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">Plans</div>
+    <div id="sidebarList" style="flex:1; overflow-y:auto;"></div>
   </div>
-  <div class="spinner" id="spinnerArea" style="display:none">修正中...</div>
+
+  <div class="main-area">
+    <div class="tab-bar" id="tabBar"></div>
+
+    <button class="selection-tooltip" id="selectionTooltip">コメントを追加</button>
+
+    <div class="container">
+      <div class="content markdown-body" id="content">
+        <div class="loading">プランを選択してください</div>
+      </div>
+      <div class="spinner" id="spinnerArea" style="display:none">修正中...</div>
+    </div>
+  </div>
 </div>
 
 <script>
-// --- Multi-tab state ---
-let tabs = []; // [{feature, planDir, title}]
+// --- State ---
+let allPlans = []; // All plans from DB [{feature, title, status, reviewing}]
+let tabs = []; // Open tabs [{feature, title}]
 let activeFeature = null;
 // Per-tab comments: {feature: [{sectionHeading, selectedText, comment}]}
 const tabComments = {};
@@ -441,59 +543,106 @@ const featurePollers = {};
 // Polling interval for plan list changes
 let planListPollerId = null;
 
+// --- Tab persistence ---
+function saveTabs() {
+  sessionStorage.setItem('viewer-tabs', JSON.stringify(tabs));
+  if (activeFeature) sessionStorage.setItem('viewer-active', activeFeature);
+}
+
+function restoreTabs() {
+  try {
+    const saved = sessionStorage.getItem('viewer-tabs');
+    if (saved) tabs = JSON.parse(saved);
+    activeFeature = sessionStorage.getItem('viewer-active') || null;
+  } catch { /* ignore */ }
+}
+
 // --- Init ---
 async function init() {
   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' });
 
-  await refreshTabs();
+  restoreTabs();
+  await refreshAllPlans();
 
-  // Poll for plan list changes (new plans registered / plans finished)
-  planListPollerId = setInterval(refreshTabs, 3000);
-}
-
-async function refreshTabs() {
-  const res = await fetch('/api/plans');
-  const data = await res.json();
-  const newTabs = data.plans;
-
-  // Detect changes
-  const oldFeatures = new Set(tabs.map(t => t.feature));
-  const newFeatures = new Set(newTabs.map(t => t.feature));
-
-  tabs = newTabs;
-
-  // Initialize comment arrays and pollers for new tabs
-  for (const tab of tabs) {
-    if (!tabComments[tab.feature]) {
-      tabComments[tab.feature] = [];
-    }
-    if (!featurePollers[tab.feature]) {
-      startPlanPoller(tab.feature);
-    }
+  // Restore active tab
+  if (activeFeature && tabs.find(t => t.feature === activeFeature)) {
+    await switchTab(activeFeature);
   }
 
-  // Clean up removed tabs
-  for (const f of oldFeatures) {
-    if (!newFeatures.has(f)) {
-      delete tabComments[f];
-      if (featurePollers[f]) {
-        clearInterval(featurePollers[f].intervalId);
-        delete featurePollers[f];
-      }
+  // Poll for plan list changes
+  planListPollerId = setInterval(refreshAllPlans, 5000);
+}
+
+async function refreshAllPlans() {
+  const res = await fetch('/api/plans');
+  const data = await res.json();
+  allPlans = data.plans;
+
+  renderSidebar();
+
+  // Auto-add reviewing plans as tabs
+  for (const plan of allPlans) {
+    if (plan.reviewing && !tabs.find(t => t.feature === plan.feature)) {
+      tabs.push({ feature: plan.feature, title: plan.title });
+      if (!tabComments[plan.feature]) tabComments[plan.feature] = [];
+      if (!featurePollers[plan.feature]) startPlanPoller(plan.feature);
     }
   }
 
   renderTabBar();
 
-  // Auto-select first tab if no active tab or active tab was removed
-  if (!activeFeature || !newFeatures.has(activeFeature)) {
-    if (tabs.length > 0) {
-      switchTab(tabs[0].feature);
-    } else {
-      document.getElementById('content').innerHTML = '<div class="loading">全プランのレビューが完了しました。</div>';
+  // Auto-select first reviewing plan if nothing active
+  if (!activeFeature) {
+    const reviewing = allPlans.find(p => p.reviewing);
+    if (reviewing) {
+      await openPlan(reviewing.feature);
     }
   }
+}
+
+function renderSidebar() {
+  const list = document.getElementById('sidebarList');
+  list.innerHTML = '';
+
+  const reviewing = allPlans.filter(p => p.reviewing);
+  const others = allPlans.filter(p => !p.reviewing);
+
+  for (const plan of reviewing) {
+    list.appendChild(createSidebarItem(plan, true));
+  }
+
+  if (reviewing.length > 0 && others.length > 0) {
+    const sep = document.createElement('hr');
+    sep.className = 'sidebar-separator';
+    list.appendChild(sep);
+  }
+
+  for (const plan of others) {
+    list.appendChild(createSidebarItem(plan, false));
+  }
+}
+
+function createSidebarItem(plan, isReviewing) {
+  const btn = document.createElement('button');
+  btn.className = 'sidebar-item' + (plan.feature === activeFeature ? ' active' : '');
+  btn.innerHTML = `${isReviewing ? '<span class="review-indicator">●</span>' : ''}${escapeHtml(plan.title || plan.feature)}<span class="plan-status">${escapeHtml(plan.status || '')}</span>`;
+  btn.title = plan.feature;
+  btn.onclick = () => openPlan(plan.feature);
+  return btn;
+}
+
+async function openPlan(feature) {
+  // Add to tabs if not already open
+  if (!tabs.find(t => t.feature === feature)) {
+    const plan = allPlans.find(p => p.feature === feature);
+    tabs.push({ feature, title: plan?.title || feature });
+    if (!tabComments[feature]) tabComments[feature] = [];
+    if (!featurePollers[feature]) startPlanPoller(feature);
+  }
+  await switchTab(feature);
+  renderSidebar();
+  saveTabs();
 }
 
 function renderTabBar() {
@@ -504,17 +653,52 @@ function renderTabBar() {
   for (const tab of tabs) {
     const el = document.createElement('button');
     el.className = 'tab-item' + (tab.feature === activeFeature ? ' active' : '');
-    el.innerHTML = escapeHtml(tab.title || tab.feature);
-    el.onclick = () => switchTab(tab.feature);
+
+    const label = document.createElement('span');
+    label.textContent = tab.title || tab.feature;
+    label.onclick = () => switchTab(tab.feature);
+    el.appendChild(label);
+
+    const closeBtn = document.createElement('span');
+    closeBtn.className = 'tab-close';
+    closeBtn.textContent = '\u00d7';
+    closeBtn.onclick = (e) => { e.stopPropagation(); closeTab(tab.feature); };
+    el.appendChild(closeBtn);
+
     bar.appendChild(el);
   }
+}
+
+function closeTab(feature) {
+  tabs = tabs.filter(t => t.feature !== feature);
+  if (featurePollers[feature]) {
+    clearInterval(featurePollers[feature].intervalId);
+    delete featurePollers[feature];
+  }
+
+  if (activeFeature === feature) {
+    if (tabs.length > 0) {
+      switchTab(tabs[0].feature);
+    } else {
+      activeFeature = null;
+      renderTabBar();
+      renderSidebar();
+      document.getElementById('content').innerHTML = '<div class="loading">プランを選択してください</div>';
+    }
+  } else {
+    renderTabBar();
+  }
+  saveTabs();
 }
 
 async function switchTab(feature) {
   activeFeature = feature;
   renderTabBar();
+  renderSidebar();
   await loadPlan(feature);
   updateCount();
+  updateReviewUI();
+  saveTabs();
 }
 
 async function loadPlan(feature) {
@@ -842,28 +1026,11 @@ async function finishReview() {
     headers: { 'Content-Type': 'application/json' }
   });
 
-  // Remove this tab
-  delete tabComments[activeFeature];
-  if (featurePollers[activeFeature]) {
-    clearInterval(featurePollers[activeFeature].intervalId);
-    delete featurePollers[activeFeature];
-  }
+  // Refresh plan list to update reviewing status
+  await refreshAllPlans();
 
-  const removedFeature = activeFeature;
-  tabs = tabs.filter(t => t.feature !== removedFeature);
-
-  if (tabs.length > 0) {
-    activeFeature = tabs[0].feature;
-    renderTabBar();
-    await loadPlan(activeFeature);
-    updateCount();
-  } else {
-    activeFeature = null;
-    renderTabBar();
-    document.getElementById('content').innerHTML = '<div class="loading">レビュー完了しました。このタブを閉じてください。</div>';
-    document.getElementById('commentCount').style.display = 'none';
-    disableButtons();
-  }
+  // Update UI for current plan (now read-only)
+  updateReviewUI();
 }
 
 function startPlanPoller(feature) {
@@ -895,7 +1062,9 @@ document.addEventListener('mouseup', () => {
   const sel = window.getSelection();
   const text = sel.toString().trim();
 
-  if (!text || text.length < 2) {
+  // Hide tooltip if not reviewing or no selection
+  const plan = allPlans.find(p => p.feature === activeFeature);
+  if (!plan?.reviewing || !text || text.length < 2) {
     tooltip.style.display = 'none';
     return;
   }
@@ -925,6 +1094,17 @@ document.addEventListener('mousedown', (e) => {
     document.getElementById('selectionTooltip').style.display = 'none';
   }
 });
+
+function updateReviewUI() {
+  const plan = allPlans.find(p => p.feature === activeFeature);
+  const isReviewing = plan?.reviewing || false;
+  document.getElementById('submitBtn').style.display = isReviewing ? '' : 'none';
+  document.getElementById('finishBtn').style.display = isReviewing ? '' : 'none';
+  // Comment buttons visibility
+  document.querySelectorAll('.comment-btn, .block-comment-btn').forEach(btn => {
+    btn.style.display = isReviewing ? '' : 'none';
+  });
+}
 
 init();
 </script>

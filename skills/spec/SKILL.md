@@ -37,7 +37,7 @@ Bash "${CLAUDE_PLUGIN_ROOT}/scripts/db.sh list-plans"
 ```
 
 - **$ARGUMENTS の feature-name に該当するプランなし** → 新規モード → ヒアリングへ
-- **該当プランあり** → 更新モード: `db.sh get-body` で plan 本文を取得、`db.sh get-result` で result（あれば）を取得し、変更点をヒアリングして Step 3 へ（Step 2 はスキップ）
+- **該当プランあり** → 更新モード: `db.sh get-body` で plan 本文を取得、`db.sh get-result` で result（あれば）を取得し、変更点をヒアリングして Step 3 へ（Step 2 はスキップ）。plan 更新後、タスク構成が変わっていれば Step 3-b で progress も再生成する
 
 ### ヒアリング（新規モード）
 

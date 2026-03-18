@@ -3,9 +3,11 @@
 #
 # Usage:
 #   annotation-cycle.sh --feature <feature-name> [--wait-only]
+#   annotation-cycle.sh --stop
 #
 # --wait-only: サーバー起動・ブラウザ表示をスキップし、ポーリングのみ行う
 #              （コメント修正後の再待機に使用）
+# --stop: サーバーを停止する
 #
 # 出力（stdout）:
 #   PORT:{port}           — サーバーのポート番号（--wait-only 時は出力しない）
@@ -23,29 +25,67 @@ LOCK_FILE="/tmp/annotation-viewer.lock"
 
 FEATURE=""
 WAIT_ONLY=false
+STOP=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --feature)   FEATURE="$2"; shift 2 ;;
         --wait-only) WAIT_ONLY=true; shift ;;
+        --stop)      STOP=true; shift ;;
         *)           echo "Error: Unknown option: $1" >&2; exit 1 ;;
     esac
 done
+
+# ─── Stop server ───
+
+if [[ "$STOP" == true ]]; then
+    if [[ -f "$LOCK_FILE" ]]; then
+        PORT="$(python3 -c "import json; d=json.load(open('$LOCK_FILE')); print(d.get('port',''))" 2>/dev/null || true)"
+        if [[ -n "$PORT" ]]; then
+            curl -s -X POST "http://127.0.0.1:${PORT}/api/shutdown" >/dev/null 2>&1 || true
+        fi
+        # Fallback: kill by PID if shutdown API failed
+        PID="$(python3 -c "import json; d=json.load(open('$LOCK_FILE')); print(d.get('pid',''))" 2>/dev/null || true)"
+        sleep 1
+        if [[ -n "$PID" ]] && kill -0 "$PID" 2>/dev/null; then
+            kill "$PID" 2>/dev/null || true
+        fi
+        rm -f "$LOCK_FILE"
+    fi
+    echo "Server stopped"
+    exit 0
+fi
 
 [[ -n "$FEATURE" ]] || { echo "Error: --feature is required" >&2; exit 1; }
 
 FEATURE_DIR="${SIGNAL_DIR}/${FEATURE}"
 
-# ─── Start server + open browser ───
+# ─── Helper: read port from lock file ───
 
-if [[ "$WAIT_ONLY" == false ]]; then
-    # Clean up stale signal files
-    rm -f "${FEATURE_DIR}/comments.json" "${FEATURE_DIR}/review-done.flag" 2>/dev/null
+read_lock_port() {
+    python3 -c "import json; d=json.load(open('$LOCK_FILE')); print(d.get('port',''))" 2>/dev/null || true
+}
 
-    # Start server in background, capture stdout to temp file
+# ─── Helper: ensure server is running (lazy start) ───
+
+ensure_server() {
+    if [[ -f "$LOCK_FILE" ]]; then
+        PORT="$(read_lock_port)"
+        if [[ -n "$PORT" ]] && curl -s -o /dev/null -w '' "http://127.0.0.1:${PORT}/api/plans" 2>/dev/null; then
+            # Server is running, register plan
+            curl -s -X POST "http://127.0.0.1:${PORT}/api/plans/register" \
+                -H "Content-Type: application/json" \
+                -d "{\"feature\": \"${FEATURE}\"}" >/dev/null 2>&1 || true
+            echo "$PORT"
+            return
+        fi
+        # Lock file exists but server is dead
+        rm -f "$LOCK_FILE"
+    fi
+
+    # Start new server in background
     PORT_FILE="$(mktemp)"
     python3 "$SERVER_SCRIPT" --feature "$FEATURE" > "$PORT_FILE" 2>/dev/null &
-    SERVER_PID=$!
 
     # Wait for PORT line (max 10 seconds)
     PORT=""
@@ -58,10 +98,21 @@ if [[ "$WAIT_ONLY" == false ]]; then
     done
     rm -f "$PORT_FILE"
 
-    # Fallback: check lock file (server may have registered to existing instance)
+    # Fallback: check lock file
     if [[ -z "$PORT" ]] && [[ -f "$LOCK_FILE" ]]; then
-        PORT="$(cat "$LOCK_FILE")"
+        PORT="$(read_lock_port)"
     fi
+
+    echo "$PORT"
+}
+
+# ─── Start server + open browser ───
+
+if [[ "$WAIT_ONLY" == false ]]; then
+    # Clean up stale signal files
+    rm -f "${FEATURE_DIR}/comments.json" "${FEATURE_DIR}/review-done.flag" 2>/dev/null
+
+    PORT="$(ensure_server)"
 
     if [[ -z "$PORT" ]]; then
         echo "Error: Could not determine server port" >&2
