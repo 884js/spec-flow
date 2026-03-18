@@ -448,6 +448,38 @@
     text-transform: uppercase;
   }
 
+  .sidebar-tabs {
+    display: flex;
+    padding: 4px 8px;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-tab {
+    flex: 1;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    color: var(--text-caption);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .sidebar-tab:hover {
+    color: var(--text-primary);
+    background: var(--bg-sidebar);
+  }
+
+  .sidebar-tab.active {
+    color: var(--text-primary);
+    background: var(--bg-sidebar);
+    border-color: var(--border);
+  }
+
   .sidebar-project-header {
     display: flex;
     align-items: center;
@@ -537,10 +569,32 @@
   }
 
   .sidebar-item .plan-status {
-    font-size: 11px;
-    color: var(--text-caption);
+    font-size: 10px;
     display: block;
-    margin-top: 1px;
+    margin-top: 3px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    line-height: 1.4;
+    width: fit-content;
+  }
+
+  .plan-status[data-status="仕様作成済み"] { color: #6b7280; background: #f3f4f6; }
+  .plan-status[data-status="未着手"] { color: #9ca3af; background: #f9fafb; }
+  .plan-status[data-status="実装中"] { color: #2563eb; background: #eff6ff; }
+  .plan-status[data-status="実装完了"] { color: #16a34a; background: #f0fdf4; }
+  .plan-status[data-status="検証済み"] { color: #15803d; background: #dcfce7; }
+  .plan-status[data-status="要修正"] { color: #dc2626; background: #fef2f2; }
+  .plan-status[data-status="部分合格"] { color: #ea580c; background: #fff7ed; }
+
+  @media (prefers-color-scheme: dark) {
+    .plan-status[data-status="仕様作成済み"] { color: #9ca3af; background: #374151; }
+    .plan-status[data-status="未着手"] { color: #6b7280; background: #1f2937; }
+    .plan-status[data-status="実装中"] { color: #60a5fa; background: #1e3a5f; }
+    .plan-status[data-status="実装完了"] { color: #4ade80; background: #14532d; }
+    .plan-status[data-status="検証済み"] { color: #86efac; background: #166534; }
+    .plan-status[data-status="要修正"] { color: #f87171; background: #7f1d1d; }
+    .plan-status[data-status="部分合格"] { color: #fb923c; background: #7c2d12; }
   }
 
   .main-area {
@@ -570,6 +624,10 @@
 <div class="main-layout">
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">Plans</div>
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" data-tab="incomplete" onclick="switchSidebarTab('incomplete')">未完了</button>
+      <button class="sidebar-tab" data-tab="all" onclick="switchSidebarTab('all')">すべて</button>
+    </div>
     <div id="sidebarList" style="flex:1; overflow-y:auto;"></div>
   </div>
 
@@ -598,6 +656,9 @@ const tabComments = {};
 const featurePollers = {};
 // Polling interval for plan list changes
 let planListPollerId = null;
+// Sidebar filter tab: 'incomplete' or 'all'
+let sidebarTab = 'incomplete';
+const COMPLETED_STATUSES = new Set(['実装完了', '検証済み']);
 
 function planKey(project, feature) { return `${project}/${feature}`; }
 
@@ -660,6 +721,14 @@ async function refreshAllPlans() {
   }
 }
 
+function switchSidebarTab(tab) {
+  sidebarTab = tab;
+  document.querySelectorAll('.sidebar-tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  renderSidebar();
+}
+
 // Track collapsed state per project
 const collapsedProjects = new Set();
 let collapsedInitialized = false;
@@ -667,6 +736,11 @@ let collapsedInitialized = false;
 function renderSidebar() {
   const list = document.getElementById('sidebarList');
   list.innerHTML = '';
+
+  // Filter plans based on sidebar tab
+  const filteredPlans = sidebarTab === 'incomplete'
+    ? allPlans.filter(p => !COMPLETED_STATUSES.has(p.status))
+    : allPlans;
 
   // Active plans section (reviewing plans across all projects)
   const activePlans = allPlans.filter(p => p.reviewing);
@@ -686,7 +760,7 @@ function renderSidebar() {
 
   // Group by project
   const projectMap = new Map();
-  for (const plan of allPlans) {
+  for (const plan of filteredPlans) {
     if (!projectMap.has(plan.project)) projectMap.set(plan.project, []);
     projectMap.get(plan.project).push(plan);
   }
@@ -734,7 +808,7 @@ function createSidebarItem(plan, isReviewing, showProject = false) {
   const btn = document.createElement('button');
   btn.className = 'sidebar-item' + (key === activeKey ? ' active' : '');
   const projectLabel = showProject ? `<span class="project-label">${escapeHtml(plan.project)}</span>` : '';
-  btn.innerHTML = `${isReviewing ? '<span class="review-indicator">●</span>' : ''}${escapeHtml(plan.title || plan.feature)}${projectLabel}<span class="plan-status">${escapeHtml(plan.status || '')}</span>`;
+  btn.innerHTML = `${isReviewing ? '<span class="review-indicator">●</span>' : ''}${escapeHtml(plan.title || plan.feature)}${projectLabel}<span class="plan-status" data-status="${escapeHtml(plan.status || '')}">${escapeHtml(plan.status || '')}</span>`;
   btn.title = plan.feature;
   btn.onclick = () => openPlan(plan.project, plan.feature);
   return btn;

@@ -181,8 +181,31 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
         conn = get_db()
         try:
             rows = conn.execute(
-                "SELECT p.feature_name, p.title, p.status, p.updated_at, pr.name as project_name "
-                "FROM plans p JOIN projects pr ON p.project_id = pr.id "
+                "SELECT p.feature_name, p.title, p.updated_at, pr.name as project_name, "
+                "  CASE "
+                "    WHEN lr.judgment = 'NEEDS_FIX' THEN '要修正' "
+                "    WHEN lr.judgment = 'PARTIAL' THEN '部分合格' "
+                "    WHEN lr.judgment = 'PASS' THEN '検証済み' "
+                "    WHEN t_total.cnt > 0 AND t_total.cnt = t_done.cnt THEN '実装完了' "
+                "    WHEN t_ip.cnt > 0 THEN '実装中' "
+                "    WHEN t_total.cnt > 0 THEN '未着手' "
+                "    ELSE '仕様作成済み' "
+                "  END as computed_status "
+                "FROM plans p "
+                "JOIN projects pr ON p.project_id = pr.id "
+                "LEFT JOIN ("
+                "  SELECT plan_id, judgment FROM results r1 "
+                "  WHERE r1.created_at = (SELECT MAX(r2.created_at) FROM results r2 WHERE r2.plan_id = r1.plan_id)"
+                ") lr ON lr.plan_id = p.id "
+                "LEFT JOIN ("
+                "  SELECT plan_id, COUNT(*) as cnt FROM tasks GROUP BY plan_id"
+                ") t_total ON t_total.plan_id = p.id "
+                "LEFT JOIN ("
+                "  SELECT plan_id, COUNT(*) as cnt FROM tasks WHERE status = 'done' GROUP BY plan_id"
+                ") t_done ON t_done.plan_id = p.id "
+                "LEFT JOIN ("
+                "  SELECT plan_id, COUNT(*) as cnt FROM tasks WHERE status = 'in_progress' GROUP BY plan_id"
+                ") t_ip ON t_ip.plan_id = p.id "
                 "ORDER BY pr.name, p.updated_at DESC",
             ).fetchall()
             plans = []
@@ -192,7 +215,7 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
                     "project": row["project_name"],
                     "feature": row["feature_name"],
                     "title": row["title"],
-                    "status": row["status"],
+                    "status": row["computed_status"],
                     "reviewing": registry_key in reviewing_set,
                 })
             plans.sort(key=lambda p: (not p["reviewing"],))
@@ -208,16 +231,14 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(404, "Project not found")
                 return
             row = conn.execute(
-                "SELECT body FROM plans WHERE feature_name = ? AND project_id = ?",
+                "SELECT body, prev_body FROM plans WHERE feature_name = ? AND project_id = ?",
                 (feature, project_id),
             ).fetchone()
             if not row or not row["body"]:
                 self.send_error(404, "Plan body not found")
                 return
             content = base64.b64decode(row["body"]).decode("utf-8")
-            # Check for .bak content in signal dir
-            bak_path = Path(SIGNAL_DIR) / feature / "plan.md.bak"
-            old = bak_path.read_text(encoding="utf-8") if bak_path.exists() else None
+            old = base64.b64decode(row["prev_body"]).decode("utf-8") if row["prev_body"] else None
             self._send_json({"content": content, "old": old})
         finally:
             conn.close()

@@ -269,7 +269,7 @@ do_set_body() {
 
     local encoded
     encoded="$(base64)"
-    sql_noheader "UPDATE plans SET body = '$encoded', updated_at = datetime('now') WHERE feature_name = '$OPT_FEATURE' AND project_id = $project_id;"
+    sql_noheader "UPDATE plans SET prev_body = body, body = '$encoded', updated_at = datetime('now') WHERE feature_name = '$OPT_FEATURE' AND project_id = $project_id;"
     echo "Body set for plan '$OPT_FEATURE'"
 }
 
