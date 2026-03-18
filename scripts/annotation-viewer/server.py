@@ -14,6 +14,7 @@ import re
 import signal
 import socket
 import sqlite3
+import subprocess
 import sys
 import threading
 import urllib.request
@@ -56,10 +57,12 @@ def is_server_running(port):
         return False
 
 
-def register_plan_remote(port, feature):
+def register_plan_remote(port, feature, project=None):
     """Register a plan with an already-running server."""
+    if project is None:
+        project = os.path.basename(os.getcwd())
     url = f"http://127.0.0.1:{port}/api/plans/register"
-    data = json.dumps({"feature": feature}).encode("utf-8")
+    data = json.dumps({"feature": feature, "project": project}).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")
     req.add_header("Content-Type", "application/json")
     with urllib.request.urlopen(req, timeout=5) as resp:
@@ -94,24 +97,27 @@ def get_db():
     return conn
 
 
-def resolve_project_id(conn):
-    """Resolve project_id from cwd."""
-    project_name = os.path.basename(os.getcwd())
+def resolve_project_id(conn, project_name=None):
+    """Resolve project_id from project name (or cwd as fallback)."""
+    if project_name is None:
+        project_name = os.path.basename(os.getcwd())
     row = conn.execute(
         "SELECT id FROM projects WHERE name = ?", (project_name,)
     ).fetchone()
     if row:
         return row["id"]
-    # Auto-register
-    cur = conn.execute(
-        "INSERT INTO projects (name, path) VALUES (?, ?) RETURNING id",
-        (project_name, os.getcwd()),
-    )
-    conn.commit()
-    return cur.fetchone()[0]
+    # Auto-register (only for cwd-based resolution)
+    if project_name == os.path.basename(os.getcwd()):
+        cur = conn.execute(
+            "INSERT INTO projects (name, path) VALUES (?, ?) RETURNING id",
+            (project_name, os.getcwd()),
+        )
+        conn.commit()
+        return cur.fetchone()[0]
+    return None
 
 
-# Shared plan registry: set of feature-names
+# Shared plan registry: set of "project/feature" keys
 plan_registry: set[str] = set()
 registry_lock = threading.Lock()
 
@@ -124,12 +130,12 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
             self._serve_viewer()
         elif self.path == "/api/plans":
             self._serve_plan_list()
-        elif m := re.match(r"^/api/plans/([^/]+)/plan$", self.path):
-            self._serve_plan(m.group(1))
-        elif m := re.match(r"^/api/plans/([^/]+)/status$", self.path):
-            self._serve_plan_status(m.group(1))
-        elif m := re.match(r"^/api/plans/([^/]+)/review-status$", self.path):
-            self._serve_review_status(m.group(1))
+        elif m := re.match(r"^/api/plans/([^/]+)/([^/]+)/plan$", self.path):
+            self._serve_plan(m.group(1), m.group(2))
+        elif m := re.match(r"^/api/plans/([^/]+)/([^/]+)/status$", self.path):
+            self._serve_plan_status(m.group(1), m.group(2))
+        elif m := re.match(r"^/api/plans/([^/]+)/([^/]+)/review-status$", self.path):
+            self._serve_review_status(m.group(1), m.group(2))
         else:
             self.send_error(404)
 
@@ -139,10 +145,10 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
             self._register_plan()
         elif self.path == "/api/plans/unregister":
             self._unregister_plan()
-        elif m := re.match(r"^/api/plans/([^/]+)/comments$", self.path):
-            self._save_comments(m.group(1))
-        elif m := re.match(r"^/api/plans/([^/]+)/finish$", self.path):
-            self._finish_review(m.group(1))
+        elif m := re.match(r"^/api/plans/([^/]+)/([^/]+)/comments$", self.path):
+            self._save_comments(m.group(1), m.group(2))
+        elif m := re.match(r"^/api/plans/([^/]+)/([^/]+)/finish$", self.path):
+            self._finish_review(m.group(1), m.group(2))
         elif self.path == "/api/shutdown":
             self._shutdown()
         else:
@@ -174,29 +180,33 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
             reviewing_set = set(plan_registry)
         conn = get_db()
         try:
-            project_id = resolve_project_id(conn)
             rows = conn.execute(
-                "SELECT feature_name, title, status, updated_at FROM plans WHERE project_id = ? ORDER BY updated_at DESC",
-                (project_id,),
+                "SELECT p.feature_name, p.title, p.status, p.updated_at, pr.name as project_name "
+                "FROM plans p JOIN projects pr ON p.project_id = pr.id "
+                "ORDER BY pr.name, p.updated_at DESC",
             ).fetchall()
             plans = []
             for row in rows:
+                registry_key = f"{row['project_name']}/{row['feature_name']}"
                 plans.append({
+                    "project": row["project_name"],
                     "feature": row["feature_name"],
                     "title": row["title"],
                     "status": row["status"],
-                    "reviewing": row["feature_name"] in reviewing_set,
+                    "reviewing": registry_key in reviewing_set,
                 })
-            # Sort: reviewing first, then by original order (updated_at DESC)
             plans.sort(key=lambda p: (not p["reviewing"],))
             self._send_json({"plans": plans})
         finally:
             conn.close()
 
-    def _serve_plan(self, feature):
+    def _serve_plan(self, project, feature):
         conn = get_db()
         try:
-            project_id = resolve_project_id(conn)
+            project_id = resolve_project_id(conn, project)
+            if project_id is None:
+                self.send_error(404, "Project not found")
+                return
             row = conn.execute(
                 "SELECT body FROM plans WHERE feature_name = ? AND project_id = ?",
                 (feature, project_id),
@@ -212,10 +222,13 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
         finally:
             conn.close()
 
-    def _serve_plan_status(self, feature):
+    def _serve_plan_status(self, project, feature):
         conn = get_db()
         try:
-            project_id = resolve_project_id(conn)
+            project_id = resolve_project_id(conn, project)
+            if project_id is None:
+                self.send_error(404, "Project not found")
+                return
             row = conn.execute(
                 "SELECT updated_at FROM plans WHERE feature_name = ? AND project_id = ?",
                 (feature, project_id),
@@ -230,22 +243,29 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
     def _register_plan(self):
         data = self._read_body()
         feature = data["feature"]
+        project = data.get("project", os.path.basename(os.getcwd()))
+        registry_key = f"{project}/{feature}"
         with registry_lock:
-            plan_registry.add(feature)
+            plan_registry.add(registry_key)
         self._send_json({"status": "ok"})
 
     def _unregister_plan(self):
         data = self._read_body()
         feature = data["feature"]
+        project = data.get("project", os.path.basename(os.getcwd()))
+        registry_key = f"{project}/{feature}"
         with registry_lock:
-            plan_registry.discard(feature)
+            plan_registry.discard(registry_key)
         self._send_json({"status": "ok"})
 
-    def _save_comments(self, feature):
+    def _save_comments(self, project, feature):
         data = self._read_body()
         conn = get_db()
         try:
-            project_id = resolve_project_id(conn)
+            project_id = resolve_project_id(conn, project)
+            if project_id is None:
+                self.send_error(404, f"Project '{project}' not found")
+                return
             row = conn.execute(
                 "SELECT id FROM plans WHERE feature_name = ? AND project_id = ?",
                 (feature, project_id),
@@ -271,7 +291,7 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
         self._send_json({"status": "ok"})
         print(f"EVENT:comments_saved:{feature}", flush=True)
 
-    def _finish_review(self, feature):
+    def _finish_review(self, project, feature):
         # Write review-done flag for CLI polling
         signal_path = Path(SIGNAL_DIR) / feature
         signal_path.mkdir(parents=True, exist_ok=True)
@@ -279,12 +299,14 @@ class AnnotationHandler(http.server.SimpleHTTPRequestHandler):
         flag_path.write_text("done", encoding="utf-8")
         self._send_json({"status": "ok"})
         print(f"EVENT:review_done:{feature}", flush=True)
+        registry_key = f"{project}/{feature}"
         with registry_lock:
-            plan_registry.discard(feature)
+            plan_registry.discard(registry_key)
 
-    def _serve_review_status(self, feature):
+    def _serve_review_status(self, project, feature):
+        registry_key = f"{project}/{feature}"
         with registry_lock:
-            reviewing = feature in plan_registry
+            reviewing = registry_key in plan_registry
         self._send_json({"reviewing": reviewing})
 
     def _shutdown(self):
@@ -316,6 +338,34 @@ def remove_lock_file():
         pass
 
 
+def cleanup_orphan_processes():
+    """Find and kill orphaned server.py processes not tracked by the lock file."""
+    lock_pid = None
+    _, existing_pid = read_lock_file()
+    if existing_pid:
+        lock_pid = int(existing_pid)
+
+    my_pid = os.getpid()
+    script_path = os.path.abspath(__file__)
+
+    try:
+        result = subprocess.run(
+            ["pgrep", "-f", script_path],
+            capture_output=True, text=True, timeout=5,
+        )
+        pids = [int(p) for p in result.stdout.strip().split("\n") if p.strip()]
+    except Exception:
+        return
+
+    for pid in pids:
+        if pid == my_pid or pid == lock_pid:
+            continue
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+
 def main():
     global _timer, _server_ref
 
@@ -335,10 +385,15 @@ def main():
         print(f"Error: DB not found at {DB_PATH}", file=sys.stderr)
         sys.exit(1)
 
+    project_name = os.path.basename(os.getcwd())
+
     if feature:
         conn = get_db()
         try:
-            project_id = resolve_project_id(conn)
+            project_id = resolve_project_id(conn, project_name)
+            if project_id is None:
+                print(f"Error: Project '{project_name}' not found in DB", file=sys.stderr)
+                sys.exit(1)
             row = conn.execute(
                 "SELECT id FROM plans WHERE feature_name = ? AND project_id = ?",
                 (feature, project_id),
@@ -349,8 +404,8 @@ def main():
         finally:
             conn.close()
 
-    # Check if a server is already running
-    existing_port, _ = read_lock_file()
+    # Check if a server is already running (lock file + health check)
+    existing_port, existing_pid = read_lock_file()
     if existing_port and is_server_running(existing_port):
         if feature:
             register_plan_remote(existing_port, feature)
@@ -358,10 +413,17 @@ def main():
         print(f"PORT:{existing_port}", flush=True)
         return
 
+    # Lock file exists but server is dead — clean up
+    if existing_port:
+        remove_lock_file()
+
+    # Kill any orphaned server.py processes before starting
+    cleanup_orphan_processes()
+
     # Start new server on fixed port with fallback
     port = find_available_port()
     if feature:
-        plan_registry.add(feature)
+        plan_registry.add(f"{project_name}/{feature}")
     write_lock_file(port, os.getpid())
 
     server = http.server.ThreadingHTTPServer(("127.0.0.1", port), AnnotationHandler)
@@ -377,6 +439,7 @@ def main():
         server.shutdown()
 
     signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
 
     print(f"PORT:{port}", flush=True)
 

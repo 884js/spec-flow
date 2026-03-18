@@ -448,6 +448,62 @@
     text-transform: uppercase;
   }
 
+  .sidebar-project-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-caption);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+    margin-top: 4px;
+    border-top: 1px solid var(--border);
+  }
+
+  .sidebar-project-header:first-child {
+    border-top: none;
+    margin-top: 0;
+  }
+
+  .sidebar-project-header:hover {
+    color: var(--text-primary);
+  }
+
+  .sidebar-project-header .toggle-arrow {
+    font-size: 10px;
+    transition: transform 0.15s;
+    margin-right: 4px;
+  }
+
+  .sidebar-project-header .toggle-arrow.collapsed {
+    transform: rotate(-90deg);
+  }
+
+  .sidebar-project-header .badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-caption);
+    background: var(--bg-sidebar);
+    border-radius: 8px;
+    padding: 1px 6px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .sidebar-project-group.collapsed .sidebar-item {
+    display: none;
+  }
+
+  .sidebar-item .project-label {
+    font-size: 10px;
+    color: var(--text-caption);
+    margin-left: 4px;
+  }
+
   .sidebar-separator {
     border: none;
     border-top: 1px solid var(--border);
@@ -533,27 +589,29 @@
 
 <script>
 // --- State ---
-let allPlans = []; // All plans from DB [{feature, title, status, reviewing}]
-let tabs = []; // Open tabs [{feature, title}]
-let activeFeature = null;
-// Per-tab comments: {feature: [{sectionHeading, selectedText, comment}]}
+let allPlans = []; // All plans from DB [{project, feature, title, status, reviewing}]
+let tabs = []; // Open tabs [{key, project, feature, title}]
+let activeKey = null; // "project/feature"
+// Per-tab comments: {key: [{sectionHeading, selectedText, comment}]}
 const tabComments = {};
-// Per-tab polling state: {feature: {intervalId, lastModified}}
+// Per-tab polling state: {key: {intervalId, lastModified}}
 const featurePollers = {};
 // Polling interval for plan list changes
 let planListPollerId = null;
 
+function planKey(project, feature) { return `${project}/${feature}`; }
+
 // --- Tab persistence ---
 function saveTabs() {
   sessionStorage.setItem('viewer-tabs', JSON.stringify(tabs));
-  if (activeFeature) sessionStorage.setItem('viewer-active', activeFeature);
+  if (activeKey) sessionStorage.setItem('viewer-active', activeKey);
 }
 
 function restoreTabs() {
   try {
     const saved = sessionStorage.getItem('viewer-tabs');
     if (saved) tabs = JSON.parse(saved);
-    activeFeature = sessionStorage.getItem('viewer-active') || null;
+    activeKey = sessionStorage.getItem('viewer-active') || null;
   } catch { /* ignore */ }
 }
 
@@ -566,8 +624,8 @@ async function init() {
   await refreshAllPlans();
 
   // Restore active tab
-  if (activeFeature && tabs.find(t => t.feature === activeFeature)) {
-    await switchTab(activeFeature);
+  if (activeKey && tabs.find(t => t.key === activeKey)) {
+    await switchTab(activeKey);
   }
 
   // Poll for plan list changes
@@ -583,64 +641,115 @@ async function refreshAllPlans() {
 
   // Auto-add reviewing plans as tabs
   for (const plan of allPlans) {
-    if (plan.reviewing && !tabs.find(t => t.feature === plan.feature)) {
-      tabs.push({ feature: plan.feature, title: plan.title });
-      if (!tabComments[plan.feature]) tabComments[plan.feature] = [];
-      if (!featurePollers[plan.feature]) startPlanPoller(plan.feature);
+    const key = planKey(plan.project, plan.feature);
+    if (plan.reviewing && !tabs.find(t => t.key === key)) {
+      tabs.push({ key, project: plan.project, feature: plan.feature, title: plan.title });
+      if (!tabComments[key]) tabComments[key] = [];
+      if (!featurePollers[key]) startPlanPoller(plan.project, plan.feature);
     }
   }
 
   renderTabBar();
 
   // Auto-select first reviewing plan if nothing active
-  if (!activeFeature) {
+  if (!activeKey) {
     const reviewing = allPlans.find(p => p.reviewing);
     if (reviewing) {
-      await openPlan(reviewing.feature);
+      await openPlan(reviewing.project, reviewing.feature);
     }
   }
 }
+
+// Track collapsed state per project
+const collapsedProjects = new Set();
+let collapsedInitialized = false;
 
 function renderSidebar() {
   const list = document.getElementById('sidebarList');
   list.innerHTML = '';
 
-  const reviewing = allPlans.filter(p => p.reviewing);
-  const others = allPlans.filter(p => !p.reviewing);
-
-  for (const plan of reviewing) {
-    list.appendChild(createSidebarItem(plan, true));
-  }
-
-  if (reviewing.length > 0 && others.length > 0) {
+  // Active plans section (reviewing plans across all projects)
+  const activePlans = allPlans.filter(p => p.reviewing);
+  if (activePlans.length > 0) {
+    const activeHeader = document.createElement('div');
+    activeHeader.className = 'sidebar-header';
+    activeHeader.textContent = 'Active';
+    list.appendChild(activeHeader);
+    for (const plan of activePlans) {
+      const item = createSidebarItem(plan, true, true);
+      list.appendChild(item);
+    }
     const sep = document.createElement('hr');
     sep.className = 'sidebar-separator';
     list.appendChild(sep);
   }
 
-  for (const plan of others) {
-    list.appendChild(createSidebarItem(plan, false));
+  // Group by project
+  const projectMap = new Map();
+  for (const plan of allPlans) {
+    if (!projectMap.has(plan.project)) projectMap.set(plan.project, []);
+    projectMap.get(plan.project).push(plan);
+  }
+
+  // Initialize collapsed state once: collapse all except the one containing activeKey
+  if (!collapsedInitialized && projectMap.size > 1) {
+    collapsedInitialized = true;
+    const activeProject = activeKey ? activeKey.split('/')[0] : null;
+    for (const projectName of projectMap.keys()) {
+      if (projectName !== activeProject) {
+        collapsedProjects.add(projectName);
+      }
+    }
+  }
+
+  for (const [projectName, plans] of projectMap) {
+    const isCollapsed = collapsedProjects.has(projectName);
+
+    const group = document.createElement('div');
+    group.className = 'sidebar-project-group' + (isCollapsed ? ' collapsed' : '');
+
+    const header = document.createElement('div');
+    header.className = 'sidebar-project-header';
+    header.innerHTML = `<span><span class="toggle-arrow${isCollapsed ? ' collapsed' : ''}">▼</span>${escapeHtml(projectName)}</span><span class="badge">${plans.length}</span>`;
+    header.onclick = () => {
+      if (collapsedProjects.has(projectName)) {
+        collapsedProjects.delete(projectName);
+      } else {
+        collapsedProjects.add(projectName);
+      }
+      renderSidebar();
+    };
+    group.appendChild(header);
+
+    for (const plan of plans) {
+      group.appendChild(createSidebarItem(plan, plan.reviewing));
+    }
+
+    list.appendChild(group);
   }
 }
 
-function createSidebarItem(plan, isReviewing) {
+function createSidebarItem(plan, isReviewing, showProject = false) {
+  const key = planKey(plan.project, plan.feature);
   const btn = document.createElement('button');
-  btn.className = 'sidebar-item' + (plan.feature === activeFeature ? ' active' : '');
-  btn.innerHTML = `${isReviewing ? '<span class="review-indicator">●</span>' : ''}${escapeHtml(plan.title || plan.feature)}<span class="plan-status">${escapeHtml(plan.status || '')}</span>`;
+  btn.className = 'sidebar-item' + (key === activeKey ? ' active' : '');
+  const projectLabel = showProject ? `<span class="project-label">${escapeHtml(plan.project)}</span>` : '';
+  btn.innerHTML = `${isReviewing ? '<span class="review-indicator">●</span>' : ''}${escapeHtml(plan.title || plan.feature)}${projectLabel}<span class="plan-status">${escapeHtml(plan.status || '')}</span>`;
   btn.title = plan.feature;
-  btn.onclick = () => openPlan(plan.feature);
+  btn.onclick = () => openPlan(plan.project, plan.feature);
   return btn;
 }
 
-async function openPlan(feature) {
+async function openPlan(project, feature) {
+  const key = planKey(project, feature);
   // Add to tabs if not already open
-  if (!tabs.find(t => t.feature === feature)) {
-    const plan = allPlans.find(p => p.feature === feature);
-    tabs.push({ feature, title: plan?.title || feature });
-    if (!tabComments[feature]) tabComments[feature] = [];
-    if (!featurePollers[feature]) startPlanPoller(feature);
+  if (!tabs.find(t => t.key === key)) {
+    const plan = allPlans.find(p => p.project === project && p.feature === feature);
+    tabs.push({ key, project, feature, title: plan?.title || feature });
+    if (!tabComments[key]) tabComments[key] = [];
+    if (!featurePollers[key]) startPlanPoller(project, feature);
   }
-  await switchTab(feature);
+  await switchTab(key);
   renderSidebar();
   saveTabs();
 }
@@ -652,35 +761,35 @@ function renderTabBar() {
   bar.style.display = 'flex';
   for (const tab of tabs) {
     const el = document.createElement('button');
-    el.className = 'tab-item' + (tab.feature === activeFeature ? ' active' : '');
+    el.className = 'tab-item' + (tab.key === activeKey ? ' active' : '');
 
     const label = document.createElement('span');
     label.textContent = tab.title || tab.feature;
-    label.onclick = () => switchTab(tab.feature);
+    label.onclick = () => switchTab(tab.key);
     el.appendChild(label);
 
     const closeBtn = document.createElement('span');
     closeBtn.className = 'tab-close';
     closeBtn.textContent = '\u00d7';
-    closeBtn.onclick = (e) => { e.stopPropagation(); closeTab(tab.feature); };
+    closeBtn.onclick = (e) => { e.stopPropagation(); closeTab(tab.key); };
     el.appendChild(closeBtn);
 
     bar.appendChild(el);
   }
 }
 
-function closeTab(feature) {
-  tabs = tabs.filter(t => t.feature !== feature);
-  if (featurePollers[feature]) {
-    clearInterval(featurePollers[feature].intervalId);
-    delete featurePollers[feature];
+function closeTab(key) {
+  tabs = tabs.filter(t => t.key !== key);
+  if (featurePollers[key]) {
+    clearInterval(featurePollers[key].intervalId);
+    delete featurePollers[key];
   }
 
-  if (activeFeature === feature) {
+  if (activeKey === key) {
     if (tabs.length > 0) {
-      switchTab(tabs[0].feature);
+      switchTab(tabs[0].key);
     } else {
-      activeFeature = null;
+      activeKey = null;
       renderTabBar();
       renderSidebar();
       document.getElementById('content').innerHTML = '<div class="loading">プランを選択してください</div>';
@@ -691,20 +800,21 @@ function closeTab(feature) {
   saveTabs();
 }
 
-async function switchTab(feature) {
-  activeFeature = feature;
+async function switchTab(key) {
+  activeKey = key;
   renderTabBar();
   renderSidebar();
-  await loadPlan(feature);
+  const tab = tabs.find(t => t.key === key);
+  if (tab) await loadPlan(tab.project, tab.feature);
   updateCount();
   updateReviewUI();
   saveTabs();
 }
 
-async function loadPlan(feature) {
-  if (!feature) return;
+async function loadPlan(project, feature) {
+  if (!project || !feature) return;
 
-  const res = await fetch(`/api/plans/${feature}/plan`);
+  const res = await fetch(`/api/plans/${encodeURIComponent(project)}/${encodeURIComponent(feature)}/plan`);
   if (!res.ok) {
     document.getElementById('content').innerHTML = `<div class="loading">プラン "${feature}" の読み込みに失敗しました。</div>`;
     return;
@@ -739,15 +849,16 @@ async function loadPlan(feature) {
   wrapSections();
 
   // Re-render existing comments for this tab
-  renderExistingComments(feature);
+  const key = planKey(project, feature);
+  renderExistingComments(key);
 
   // Hide spinner
   document.getElementById('spinnerArea').style.display = 'none';
   enableButtons();
 }
 
-function renderExistingComments(feature) {
-  const comments = tabComments[feature] || [];
+function renderExistingComments(key) {
+  const comments = tabComments[key] || [];
   // Re-add comment items to the DOM based on section headings
   for (let i = 0; i < comments.length; i++) {
     const c = comments[i];
@@ -931,7 +1042,7 @@ function openCommentForm(wrapper, sectionHeading, blockText) {
 }
 
 function addComment(btn, sectionHeading, selectedText) {
-  if (!activeFeature) return;
+  if (!activeKey) return;
 
   const form = btn.closest('.comment-form');
   const textarea = form.querySelector('textarea');
@@ -942,10 +1053,10 @@ function addComment(btn, sectionHeading, selectedText) {
   const prefix = heading ? '#'.repeat(parseInt(heading.tagName[1])) + ' ' : '## ';
   const comment = { sectionHeading: `${prefix}${sectionHeading}`, selectedText: selectedText || undefined, comment: text };
 
-  if (!tabComments[activeFeature]) tabComments[activeFeature] = [];
-  tabComments[activeFeature].push(comment);
+  if (!tabComments[activeKey]) tabComments[activeKey] = [];
+  tabComments[activeKey].push(comment);
 
-  const comments = tabComments[activeFeature];
+  const comments = tabComments[activeKey];
   const idx = comments.length - 1;
   const item = document.createElement('div');
   item.className = 'comment-item';
@@ -959,8 +1070,8 @@ function addComment(btn, sectionHeading, selectedText) {
 }
 
 function deleteComment(idx, btn) {
-  if (!activeFeature) return;
-  tabComments[activeFeature].splice(idx, 1);
+  if (!activeKey) return;
+  tabComments[activeKey].splice(idx, 1);
   btn.closest('.comment-item').remove();
   updateCount();
   document.querySelectorAll('.comment-item .comment-delete').forEach((b, i) => {
@@ -969,7 +1080,7 @@ function deleteComment(idx, btn) {
 }
 
 function updateCount() {
-  const comments = tabComments[activeFeature] || [];
+  const comments = tabComments[activeKey] || [];
   const el = document.getElementById('commentCount');
   const submitBtn = document.getElementById('submitBtn');
 
@@ -984,7 +1095,7 @@ function updateCount() {
 }
 
 function enableButtons() {
-  document.getElementById('submitBtn').disabled = !(tabComments[activeFeature]?.length > 0);
+  document.getElementById('submitBtn').disabled = !(tabComments[activeKey]?.length > 0);
   document.getElementById('finishBtn').disabled = false;
 }
 
@@ -1000,28 +1111,34 @@ function escapeHtml(s) {
 }
 
 async function submitComments() {
-  if (!activeFeature) return;
-  const comments = tabComments[activeFeature] || [];
+  if (!activeKey) return;
+  const comments = tabComments[activeKey] || [];
   if (comments.length === 0) return;
+
+  const tab = tabs.find(t => t.key === activeKey);
+  if (!tab) return;
 
   disableButtons();
   document.getElementById('spinnerArea').style.display = 'block';
 
-  await fetch(`/api/plans/${activeFeature}/comments`, {
+  await fetch(`/api/plans/${encodeURIComponent(tab.project)}/${encodeURIComponent(tab.feature)}/comments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ comments })
   });
 
   // Clear comments for this tab
-  tabComments[activeFeature] = [];
+  tabComments[activeKey] = [];
   updateCount();
 }
 
 async function finishReview() {
-  if (!activeFeature) return;
+  if (!activeKey) return;
 
-  await fetch(`/api/plans/${activeFeature}/finish`, {
+  const tab = tabs.find(t => t.key === activeKey);
+  if (!tab) return;
+
+  await fetch(`/api/plans/${encodeURIComponent(tab.project)}/${encodeURIComponent(tab.feature)}/finish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   });
@@ -1033,17 +1150,19 @@ async function finishReview() {
   updateReviewUI();
 }
 
-function startPlanPoller(feature) {
+function startPlanPoller(project, feature) {
+  const key = planKey(project, feature);
   const state = { intervalId: null, lastModified: null };
 
   state.intervalId = setInterval(async () => {
     try {
-      const res = await fetch(`/api/plans/${feature}/status`);
+      const res = await fetch(`/api/plans/${encodeURIComponent(project)}/${encodeURIComponent(feature)}/status`);
       if (!res.ok) return;
       const data = await res.json();
       if (state.lastModified !== null && data.lastModified > state.lastModified) {
-        if (feature === activeFeature) {
-          await loadPlan(feature);
+        if (key === activeKey) {
+          const tab = tabs.find(t => t.key === key);
+          if (tab) await loadPlan(tab.project, tab.feature);
           updateCount();
         }
       }
@@ -1053,7 +1172,7 @@ function startPlanPoller(feature) {
     }
   }, 3000);
 
-  featurePollers[feature] = state;
+  featurePollers[key] = state;
 }
 
 // Selection-based comment tooltip
@@ -1063,7 +1182,8 @@ document.addEventListener('mouseup', () => {
   const text = sel.toString().trim();
 
   // Hide tooltip if not reviewing or no selection
-  const plan = allPlans.find(p => p.feature === activeFeature);
+  const activeTab = tabs.find(t => t.key === activeKey);
+  const plan = activeTab ? allPlans.find(p => p.project === activeTab.project && p.feature === activeTab.feature) : null;
   if (!plan?.reviewing || !text || text.length < 2) {
     tooltip.style.display = 'none';
     return;
@@ -1078,9 +1198,10 @@ document.addEventListener('mouseup', () => {
 
   const range = sel.getRangeAt(0);
   const rect = range.getBoundingClientRect();
+  const container = document.querySelector('.main-area .container');
   tooltip.style.display = 'block';
   tooltip.style.left = `${rect.left + rect.width / 2 - 50}px`;
-  tooltip.style.top = `${rect.top + window.scrollY - 32}px`;
+  tooltip.style.top = `${rect.top + (container ? container.scrollTop : window.scrollY) - 32}px`;
 
   tooltip.onclick = () => {
     const heading = wrapper.querySelector('h1, h2, h3');
@@ -1096,7 +1217,8 @@ document.addEventListener('mousedown', (e) => {
 });
 
 function updateReviewUI() {
-  const plan = allPlans.find(p => p.feature === activeFeature);
+  const tab = tabs.find(t => t.key === activeKey);
+  const plan = tab ? allPlans.find(p => p.project === tab.project && p.feature === tab.feature) : null;
   const isReviewing = plan?.reviewing || false;
   document.getElementById('submitBtn').style.display = isReviewing ? '' : 'none';
   document.getElementById('finishBtn').style.display = isReviewing ? '' : 'none';
