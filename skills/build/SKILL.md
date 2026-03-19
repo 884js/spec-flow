@@ -1,7 +1,7 @@
 ---
 name: build
 description: "Implements features based on plan. Handles feature branch creation, task-by-task coding with dependency order, and build verification. Supports pause/resume via DB task state tracking. Use when starting implementation."
-allowed-tools: Read Glob Grep Write Edit Task Bash WebSearch WebFetch
+allowed-tools: Read Glob Grep Write Edit Task Bash WebSearch WebFetch Agent
 metadata:
   triggers: build, implement, 実装開始, コード実装, 実装再開
 ---
