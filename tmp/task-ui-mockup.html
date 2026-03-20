@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>タスク一覧 UI モックアップ</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; }
+
+  h1 { text-align: center; padding: 24px; color: #58a6ff; font-size: 20px; border-bottom: 1px solid #30363d; }
+  .mockup-label { text-align: center; padding: 16px; font-size: 18px; font-weight: 600; color: #f0883e; background: #161b22; border-bottom: 1px solid #30363d; }
+  .mockup-section { border-bottom: 3px solid #58a6ff; }
+
+  /* === Shared layout === */
+  .app { display: flex; height: 480px; background: #0d1117; }
+  .sidebar { width: 260px; min-width: 260px; background: #161b22; border-right: 1px solid #30363d; overflow-y: auto; padding: 12px 0; }
+  .sidebar h3 { padding: 8px 16px; font-size: 11px; text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px; }
+  .sidebar-item { display: flex; align-items: center; gap: 8px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .sidebar-item:hover { background: #1c2128; }
+  .sidebar-item.active { background: #1c2128; border-left: 3px solid #58a6ff; }
+  .main { flex: 1; overflow-y: auto; padding: 24px 32px; }
+
+  /* Status badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge-done { background: #1b4332; color: #3fb950; }
+  .badge-in-progress { background: #3b2e00; color: #d29922; }
+  .badge-pending { background: #1c1c1c; color: #8b949e; }
+  .badge-plan-done { background: #1b4332; color: #3fb950; }
+  .badge-plan-wip { background: #3b2e00; color: #d29922; }
+
+  /* === Plan A: Progress bar + collapsible task list === */
+  .progress-section { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+  .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .progress-header h3 { font-size: 14px; color: #c9d1d9; }
+  .progress-stats { font-size: 13px; color: #8b949e; }
+  .progress-bar-bg { height: 8px; background: #21262d; border-radius: 4px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+  .progress-bar-fill.green { background: linear-gradient(90deg, #238636, #3fb950); }
+  .task-list { margin-top: 12px; border-top: 1px solid #30363d; padding-top: 12px; }
+  .task-list.collapsed { display: none; }
+  .task-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; }
+  .task-num { color: #8b949e; font-size: 12px; min-width: 24px; }
+  .toggle-btn { background: none; border: 1px solid #30363d; color: #8b949e; padding: 2px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+  .toggle-btn:hover { color: #c9d1d9; border-color: #484f58; }
+
+  /* Plan content placeholder */
+  .plan-content h2 { font-size: 18px; color: #c9d1d9; margin-bottom: 12px; }
+  .plan-content p { color: #8b949e; font-size: 14px; line-height: 1.7; margin-bottom: 8px; }
+  .plan-content .placeholder-block { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px 16px; margin: 8px 0; color: #8b949e; font-size: 13px; }
+
+  /* === Plan B: Sidebar nested tasks === */
+  .sidebar-tasks { padding-left: 28px; }
+  .sidebar-task { display: flex; align-items: center; gap: 6px; padding: 4px 16px 4px 0; font-size: 12px; color: #8b949e; }
+  .sidebar-task .task-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-icon { font-size: 14px; min-width: 16px; text-align: center; }
+  .task-icon.done { color: #3fb950; }
+  .task-icon.wip { color: #d29922; }
+  .task-icon.pending { color: #484f58; }
+
+  /* === Plan C: Sub-tabs === */
+  .sub-tabs { display: flex; gap: 0; border-bottom: 1px solid #30363d; margin-bottom: 20px; }
+  .sub-tab { padding: 10px 20px; font-size: 13px; color: #8b949e; cursor: pointer; border-bottom: 2px solid transparent; }
+  .sub-tab:hover { color: #c9d1d9; }
+  .sub-tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
+  .tasks-view { width: 100%; }
+  .tasks-table { width: 100%; border-collapse: collapse; }
+  .tasks-table th { text-align: left; padding: 8px 12px; font-size: 12px; color: #8b949e; border-bottom: 1px solid #30363d; font-weight: 500; }
+  .tasks-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #21262d; }
+  .tasks-table tr:hover { background: #161b22; }
+
+  /* Tab bar (shared) */
+  .tabbar { display: flex; background: #161b22; border-bottom: 1px solid #30363d; }
+  .tab { padding: 8px 16px; font-size: 12px; color: #8b949e; border-bottom: 2px solid transparent; cursor: pointer; }
+  .tab.active { color: #c9d1d9; border-bottom-color: #58a6ff; }
+</style>
+</head>
+<body>
+
+<h1>タスク一覧 UI デザイン案</h1>
+
+<!-- ==================== Plan A ==================== -->
+<div class="mockup-section">
+  <div class="mockup-label">案 A: プログレスバー ＋ 折りたたみタスクリスト</div>
+  <div class="app">
+    <div class="sidebar">
+      <h3>Plans</h3>
+      <div class="sidebar-item active">
+        <span class="badge badge-plan-wip">実装中</span>
+        <span>sqlite-plan-storage</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="badge badge-plan-done">検証済み</span>
+        <span>annotation-cycle</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="badge badge-pending">未着手</span>
+        <span>build-self-verify</span>
+      </div>
+    </div>
+    <div class="main">
+      <div class="tabbar">
+        <div class="tab active">sqlite-plan-storage ×</div>
+        <div class="tab">annotation-cycle ×</div>
+      </div>
+      <div style="padding: 20px 0;">
+        <!-- Progress section -->
+        <div class="progress-section">
+          <div class="progress-header">
+            <h3>タスク進捗</h3>
+            <span class="progress-stats">3 / 5 完了</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill green" style="width: 60%;"></div>
+          </div>
+          <div class="task-list" id="taskListA">
+            <div class="task-item">
+              <span class="task-num">#1</span>
+              <span class="badge badge-done">完了</span>
+              <span>SQLite スキーマ定義 + マイグレーション</span>
+            </div>
+            <div class="task-item">
+              <span class="task-num">#2</span>
+              <span class="badge badge-done">完了</span>
+              <span>db.sh CRUD コマンド実装</span>
+            </div>
+            <div class="task-item">
+              <span class="task-num">#3</span>
+              <span class="badge badge-done">完了</span>
+              <span>server.py DB 直接読取り対応</span>
+            </div>
+            <div class="task-item">
+              <span class="task-num">#4</span>
+              <span class="badge badge-in-progress">実行中</span>
+              <span>viewer.html マルチタブ + サイドバー</span>
+            </div>
+            <div class="task-item">
+              <span class="task-num">#5</span>
+              <span class="badge badge-pending">未着手</span>
+              <span>全スキル/エージェント DB 対応更新</span>
+            </div>
+          </div>
+          <div style="text-align: center; margin-top: 8px;">
+            <button class="toggle-btn" onclick="document.getElementById('taskListA').classList.toggle('collapsed')">▲ 折りたたむ</button>
+          </div>
+        </div>
+
+        <!-- Plan content -->
+        <div class="plan-content">
+          <h2>概要</h2>
+          <p>プラン管理をMarkdownファイルベースからSQLite DBへ全面移行する。</p>
+          <div class="placeholder-block">受入条件 / スコープ / データフロー / ...</div>
+          <div class="placeholder-block" style="height: 60px;">（plan 本文の続き）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Plan B ==================== -->
+<div class="mockup-section">
+  <div class="mockup-label">案 B: サイドバーにタスクをネスト表示</div>
+  <div class="app">
+    <div class="sidebar">
+      <h3>Plans</h3>
+      <div class="sidebar-item active">
+        <span class="badge badge-plan-wip">実装中</span>
+        <span>sqlite-plan-storage</span>
+      </div>
+      <div class="sidebar-tasks">
+        <div class="sidebar-task">
+          <span class="task-icon done">✓</span>
+          <span class="task-desc">SQLite スキーマ定義</span>
+        </div>
+        <div class="sidebar-task">
+          <span class="task-icon done">✓</span>
+          <span class="task-desc">db.sh CRUD コマンド実装</span>
+        </div>
+        <div class="sidebar-task">
+          <span class="task-icon done">✓</span>
+          <span class="task-desc">server.py DB 直接読取り</span>
+        </div>
+        <div class="sidebar-task">
+          <span class="task-icon wip">◐</span>
+          <span class="task-desc">viewer.html マルチタブ</span>
+        </div>
+        <div class="sidebar-task">
+          <span class="task-icon pending">○</span>
+          <span class="task-desc">スキル/エージェント更新</span>
+        </div>
+      </div>
+      <div class="sidebar-item">
+        <span class="badge badge-plan-done">検証済み</span>
+        <span>annotation-cycle</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="badge badge-pending">未着手</span>
+        <span>build-self-verify</span>
+      </div>
+    </div>
+    <div class="main">
+      <div class="tabbar">
+        <div class="tab active">sqlite-plan-storage ×</div>
+      </div>
+      <div style="padding: 20px 0;">
+        <div class="plan-content">
+          <h2>概要</h2>
+          <p>プラン管理をMarkdownファイルベースからSQLite DBへ全面移行する。</p>
+          <div class="placeholder-block">受入条件 / スコープ / データフロー / ...</div>
+          <div class="placeholder-block" style="height: 100px;">（plan 本文がフルに表示される — タスクはサイドバーに分離）</div>
+          <div class="placeholder-block" style="height: 60px;">（plan 本文の続き）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Plan C': Tab integrated toggle ==================== -->
+<div class="mockup-section">
+  <div class="mockup-label">案 C': プランタブ内に Plan/Tasks トグルを統合</div>
+  <div class="app">
+    <div class="sidebar">
+      <h3>Plans</h3>
+      <div class="sidebar-item active">
+        <span class="badge badge-plan-wip">実装中</span>
+        <span>sqlite-plan-storage</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="badge badge-plan-done">検証済み</span>
+        <span>annotation-cycle</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="badge badge-pending">未着手</span>
+        <span>build-self-verify</span>
+      </div>
+    </div>
+    <div class="main">
+      <div class="tabbar">
+        <div class="tab" style="color: #8b949e;">
+          <span>sqlite-plan-storage</span>
+          <span style="margin-left: 6px; padding: 1px 6px; border: 1px solid #30363d; border-radius: 3px; font-size: 10px; color: #8b949e;">Plan</span>
+          <span style="margin-left: 2px; padding: 1px 6px; border: 1px solid #58a6ff; border-radius: 3px; font-size: 10px; color: #58a6ff; background: rgba(88,166,255,0.1);">Tasks</span>
+          <span style="margin-left: 8px; font-size: 11px; color: #484f58;">×</span>
+        </div>
+        <div class="tab">annotation-cycle ×</div>
+      </div>
+      <div style="padding: 20px;">
+        <div class="tasks-view">
+          <div style="margin-bottom: 16px;">
+            <div class="progress-bar-bg" style="height: 6px;">
+              <div class="progress-bar-fill green" style="width: 60%;"></div>
+            </div>
+            <div style="font-size: 12px; color: #8b949e; margin-top: 4px;">3 / 5 タスク完了（60%）</div>
+          </div>
+          <table class="tasks-table">
+            <thead>
+              <tr>
+                <th style="width: 40px;">#</th>
+                <th style="width: 80px;">状態</th>
+                <th>タスク</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="color: #8b949e;">1</td>
+                <td><span class="badge badge-done">完了</span></td>
+                <td>SQLite スキーマ定義 + マイグレーションスクリプト作成</td>
+              </tr>
+              <tr>
+                <td style="color: #8b949e;">2</td>
+                <td><span class="badge badge-done">完了</span></td>
+                <td>db.sh CRUD コマンド実装</td>
+              </tr>
+              <tr>
+                <td style="color: #8b949e;">3</td>
+                <td><span class="badge badge-done">完了</span></td>
+                <td>server.py を DB 直接読取りに改修</td>
+              </tr>
+              <tr>
+                <td style="color: #8b949e;">4</td>
+                <td><span class="badge badge-in-progress">実行中</span></td>
+                <td>viewer.html マルチタブ + サイドバー対応</td>
+              </tr>
+              <tr>
+                <td style="color: #8b949e;">5</td>
+                <td><span class="badge badge-pending">未着手</span></td>
+                <td>全スキル/エージェント定義の DB 対応更新</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Plan D: A + B hybrid ==================== -->
+<div class="mockup-section">
+  <div class="mockup-label">案 D: プログレスバー（メイン上部）＋ サイドバーネスト</div>
+  <div class="app">
+    <div class="sidebar">
+      <h3>Plans</h3>
+      <div class="sidebar-item active">
+        <span class="badge badge-plan-wip">実装中</span>
+        <span>sqlite-plan-storage</span>
+      </div>
+      <div class="sidebar-tasks">
+        <div class="sidebar-task">
+          <span class="task-icon done">✓</span>
+          <span class="task-desc">SQLite スキーマ定義</span>
+        </div>
+        <div class="sidebar-task">
+          <span class="task-icon done">✓</span>
+          <span class="task-desc">db.sh CRUD コマンド実装</span>
+        </div>
+        <div class="sidebar-task">
+          <span class="task-icon done">✓</span>
+          <span class="task-desc">server.py DB 直接読取り</span>
+        </div>
+        <div class="sidebar-task">
+          <span class="task-icon wip">◐</span>
+          <span class="task-desc">viewer.html マルチタブ</span>
+        </div>
+        <div class="sidebar-task">
+          <span class="task-icon pending">○</span>
+          <span class="task-desc">スキル/エージェント更新</span>
+        </div>
+      </div>
+      <div class="sidebar-item">
+        <span class="badge badge-plan-done">検証済み</span>
+        <span>annotation-cycle</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="badge badge-pending">未着手</span>
+        <span>build-self-verify</span>
+      </div>
+    </div>
+    <div class="main">
+      <div class="tabbar">
+        <div class="tab active">sqlite-plan-storage ×</div>
+      </div>
+      <div style="padding: 20px 0;">
+        <!-- Compact progress bar only (no task list - that's in sidebar) -->
+        <div class="progress-section" style="padding: 12px 16px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 13px; color: #c9d1d9; white-space: nowrap;">タスク進捗</span>
+            <div class="progress-bar-bg" style="flex: 1;">
+              <div class="progress-bar-fill green" style="width: 60%;"></div>
+            </div>
+            <span style="font-size: 12px; color: #8b949e; white-space: nowrap;">3 / 5</span>
+          </div>
+        </div>
+
+        <div class="plan-content" style="margin-top: 16px;">
+          <h2>概要</h2>
+          <p>プラン管理をMarkdownファイルベースからSQLite DBへ全面移行する。</p>
+          <div class="placeholder-block">受入条件 / スコープ / データフロー / ...</div>
+          <div class="placeholder-block" style="height: 100px;">（plan 本文がフルに表示される）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="padding: 24px; text-align: center; color: #8b949e; font-size: 13px;">
+  A = プログレスバー＋折りたたみ / B = サイドバーネスト / C' = タブ内トグル / D = A+B ハイブリッド
+</div>
+
+</body>
+</html>

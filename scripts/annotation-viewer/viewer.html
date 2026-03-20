@@ -70,36 +70,23 @@
     background: var(--bg-page);
   }
 
-  .header {
-    background: var(--bg-page);
-    padding: 14px 24px 0;
+  .header-actions { display: flex; gap: 10px; align-items: center; padding-right: 12px; }
+
+  .tab-bar-row {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    align-items: stretch;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-page);
   }
-
-  .header h1 {
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-  }
-
-  .header-actions { display: flex; gap: 10px; align-items: center; }
 
   /* Tab bar */
   .tab-bar {
+    flex: 1;
     background: var(--bg-page);
-    border-bottom: 1px solid var(--border);
     padding: 0 24px;
     display: flex;
     gap: 2px;
     overflow-x: auto;
-    position: sticky;
-    top: 0;
-    z-index: 99;
   }
 
   .tab-bar:empty { display: none; }
@@ -116,6 +103,9 @@
     cursor: pointer;
     white-space: nowrap;
     transition: color 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .tab-item:hover { color: var(--text-primary); }
@@ -124,6 +114,18 @@
     color: var(--accent);
     border-bottom-color: var(--accent);
   }
+
+  .tab-close {
+    font-size: 14px;
+    line-height: 1;
+    color: var(--text-caption);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+  .tab-close:hover { color: var(--color-danger); background: var(--bg-tab); }
 
   .btn {
     padding: 7px 18px;
@@ -151,16 +153,167 @@
   .btn-finish:hover { background: var(--text-caption); color: var(--bg-page); }
 
   .container {
-    max-width: 1200px;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
     padding: 32px 24px;
+    display: flex;
+    flex-direction: row;
+    gap: 0;
   }
 
   .content {
+    flex: 1;
+    min-width: 0;
+    max-width: 1200px;
     background: var(--bg-content);
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 40px 48px;
+  }
+
+  /* Comment panel */
+  .comment-panel {
+    width: 320px;
+    min-width: 320px;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    margin-left: 16px;
+    background: var(--bg-content);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    transition: width 0.25s ease, min-width 0.25s ease, margin-left 0.25s ease, opacity 0.25s ease;
+  }
+
+  .comment-panel.hidden {
+    width: 0;
+    min-width: 0;
+    margin-left: 0;
+    opacity: 0;
+    overflow: hidden;
+    border: none;
+    padding: 0;
+  }
+
+  .comment-panel-header {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .comment-panel-header .panel-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .panel-input-area {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .panel-input-area textarea {
+    flex: 1;
+    min-height: 36px;
+    max-height: 120px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    font-family: var(--font-sans);
+    background: var(--bg-content);
+    color: var(--text-primary);
+  }
+
+  .panel-input-area textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .panel-submit-btn {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+    white-space: nowrap;
+  }
+
+  .panel-section-group {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-section-group:last-child {
+    border-bottom: none;
+  }
+
+  .panel-section-heading {
+    padding: 10px 16px 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-caption);
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+
+  .panel-section-heading:hover {
+    color: var(--accent);
+  }
+
+  .panel-comment-item {
+    padding: 8px 16px 10px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    position: relative;
+  }
+
+  .panel-comment-item + .panel-comment-item {
+    border-top: 1px dashed var(--border);
+  }
+
+  .panel-comment-item .panel-quote {
+    font-size: 11px;
+    color: var(--text-caption);
+    background: var(--bg-comment);
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-bottom: 4px;
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .panel-comment-item .panel-delete {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: var(--text-caption);
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .panel-comment-item:hover .panel-delete {
+    opacity: 1;
+  }
+
+  .panel-comment-item .panel-delete:hover {
+    color: var(--color-danger);
   }
 
   /* Override github-markdown-css defaults for layout integration */
@@ -174,65 +327,8 @@
 
   .content input[type="checkbox"] { pointer-events: none; }
 
-  /* Section hover comment button */
+  /* Section wrapper */
   .section-wrapper { position: relative; }
-
-  .section-wrapper:hover .comment-btn {
-    opacity: 1;
-  }
-
-  .comment-btn {
-    position: absolute;
-    left: -36px;
-    top: 0;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 1.5px solid var(--accent);
-    background: var(--bg-content);
-    color: var(--accent);
-    font-size: 16px;
-    line-height: 1;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .comment-btn:hover { background: var(--accent); color: var(--bg-content); }
-
-  /* Block-level comment buttons */
-  .block-wrapper {
-    position: relative;
-  }
-
-  .block-wrapper:hover > .block-comment-btn {
-    opacity: 1;
-  }
-
-  .block-comment-btn {
-    position: absolute;
-    left: -28px;
-    top: 2px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--bg-content);
-    color: var(--text-caption);
-    font-size: 12px;
-    line-height: 1;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .block-comment-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   /* Comment form */
   .comment-form {
@@ -241,6 +337,14 @@
     border-radius: 4px;
     padding: 14px;
     margin: 12px 0 20px;
+  }
+
+  .comment-form.floating {
+    position: fixed;
+    z-index: 250;
+    width: 340px;
+    margin: 0;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
   }
 
   .comment-form textarea {
@@ -323,7 +427,7 @@
 
   /* Selection tooltip */
   .selection-tooltip {
-    position: absolute;
+    position: fixed;
     background: var(--accent);
     color: var(--bg-page);
     border: none;
@@ -406,94 +510,420 @@
 
   /* Loading */
   .loading { text-align: center; padding: 48px; color: var(--text-caption); }
+
+  /* Main layout with sidebar */
+  .main-layout {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: var(--bg-content);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-header {
+    padding: 12px 16px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-caption);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .sidebar-tabs {
+    display: flex;
+    padding: 4px 8px;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-tab {
+    flex: 1;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    color: var(--text-caption);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .sidebar-tab:hover {
+    color: var(--text-primary);
+    background: var(--bg-sidebar);
+  }
+
+  .sidebar-tab.active {
+    color: var(--text-primary);
+    background: var(--bg-sidebar);
+    border-color: var(--border);
+  }
+
+  .sidebar-project-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-caption);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+    margin-top: 4px;
+    border-top: 1px solid var(--border);
+  }
+
+  .sidebar-project-header:first-child {
+    border-top: none;
+    margin-top: 0;
+  }
+
+  .sidebar-project-header:hover {
+    color: var(--text-primary);
+  }
+
+  .sidebar-project-header .toggle-arrow {
+    font-size: 10px;
+    transition: transform 0.15s;
+    margin-right: 4px;
+  }
+
+  .sidebar-project-header .toggle-arrow.collapsed {
+    transform: rotate(-90deg);
+  }
+
+  .sidebar-project-header .badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-caption);
+    background: var(--bg-sidebar);
+    border-radius: 8px;
+    padding: 1px 6px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .sidebar-project-group.collapsed .sidebar-item {
+    display: none;
+  }
+
+  .sidebar-item .project-label {
+    font-size: 10px;
+    color: var(--text-caption);
+    margin-left: 4px;
+  }
+
+  .sidebar-separator {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 4px 16px;
+  }
+
+  .sidebar-item {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar-item:hover { background: var(--bg-tab); }
+  .sidebar-item.active { background: var(--bg-tab); color: var(--accent); font-weight: 600; }
+
+  .sidebar-item .review-indicator {
+    color: var(--accent);
+    margin-right: 4px;
+  }
+
+  .sidebar-item .plan-status {
+    font-size: 10px;
+    display: block;
+    margin-top: 3px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    line-height: 1.4;
+    width: fit-content;
+  }
+
+  .plan-status[data-status="仕様作成済み"] { color: #6b7280; background: #f3f4f6; }
+  .plan-status[data-status="未着手"] { color: #9ca3af; background: #f9fafb; }
+  .plan-status[data-status="実装中"] { color: #2563eb; background: #eff6ff; }
+  .plan-status[data-status="実装完了"] { color: #16a34a; background: #f0fdf4; }
+  .plan-status[data-status="検証済み"] { color: #15803d; background: #dcfce7; }
+  .plan-status[data-status="要修正"] { color: #dc2626; background: #fef2f2; }
+  .plan-status[data-status="部分合格"] { color: #ea580c; background: #fff7ed; }
+
+  @media (prefers-color-scheme: dark) {
+    .plan-status[data-status="仕様作成済み"] { color: #9ca3af; background: #374151; }
+    .plan-status[data-status="未着手"] { color: #6b7280; background: #1f2937; }
+    .plan-status[data-status="実装中"] { color: #60a5fa; background: #1e3a5f; }
+    .plan-status[data-status="実装完了"] { color: #4ade80; background: #14532d; }
+    .plan-status[data-status="検証済み"] { color: #86efac; background: #166534; }
+    .plan-status[data-status="要修正"] { color: #f87171; background: #7f1d1d; }
+    .plan-status[data-status="部分合格"] { color: #fb923c; background: #7c2d12; }
+  }
+
+  .main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .main-area .container {
+    flex: 1;
+    overflow-y: auto;
+    align-items: flex-start;
+  }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>Plan Review</h1>
-  <div class="header-actions">
-    <span id="commentCount" class="comment-count" style="display:none">0 comments</span>
-    <button class="btn btn-primary" id="submitBtn" onclick="submitComments()" disabled>コメントを送信</button>
-    <button class="btn btn-finish" id="finishBtn" onclick="finishReview()">レビュー完了</button>
+<div class="main-layout">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">Plans</div>
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" data-tab="incomplete" onclick="switchSidebarTab('incomplete')">未完了</button>
+      <button class="sidebar-tab" data-tab="all" onclick="switchSidebarTab('all')">すべて</button>
+    </div>
+    <div id="sidebarList" style="flex:1; overflow-y:auto;"></div>
   </div>
-</div>
 
-<div class="tab-bar" id="tabBar"></div>
+  <div class="main-area">
+    <div class="tab-bar-row">
+      <div class="tab-bar" id="tabBar"></div>
+      <div class="header-actions">
+        <span id="commentCount" class="comment-count" style="display:none">0 comments</span>
+        <button class="btn btn-primary" id="submitBtn" onclick="submitComments()" disabled style="display:none">コメントを送信</button>
+        <button class="btn btn-finish" id="finishBtn" onclick="finishReview()" style="display:none">レビュー完了</button>
+      </div>
+    </div>
 
-<button class="selection-tooltip" id="selectionTooltip">コメントを追加</button>
+    <button class="selection-tooltip" id="selectionTooltip">コメントを追加</button>
 
-<div class="container">
-  <div class="content markdown-body" id="content">
-    <div class="loading">読み込み中...</div>
+    <div class="container">
+      <div class="content markdown-body" id="content">
+        <div class="loading">プランを選択してください</div>
+      </div>
+      <div class="comment-panel hidden" id="commentPanel">
+        <div class="comment-panel-header">
+          <span>Comments <span class="panel-count" id="panelCount"></span></span>
+        </div>
+        <div class="panel-input-area">
+          <textarea id="panelTextarea" placeholder="コメントを入力..." rows="2"></textarea>
+          <button class="btn btn-primary panel-submit-btn" id="panelSubmitBtn" onclick="addPanelComment()">追加</button>
+        </div>
+        <div id="panelBody"></div>
+      </div>
+      <div class="spinner" id="spinnerArea" style="display:none">修正中...</div>
+    </div>
   </div>
-  <div class="spinner" id="spinnerArea" style="display:none">修正中...</div>
 </div>
 
 <script>
-// --- Multi-tab state ---
-let tabs = []; // [{feature, planDir, title}]
-let activeFeature = null;
-// Per-tab comments: {feature: [{sectionHeading, selectedText, comment}]}
+// --- State ---
+let allPlans = []; // All plans from DB [{project, feature, title, status, reviewing}]
+let tabs = []; // Open tabs [{key, project, feature, title}]
+let activeKey = null; // "project/feature"
+// Per-tab comments: {key: [{sectionHeading, selectedText, comment}]}
 const tabComments = {};
-// Per-tab polling state: {feature: {intervalId, lastModified}}
+// Per-tab polling state: {key: {intervalId, lastModified}}
 const featurePollers = {};
 // Polling interval for plan list changes
 let planListPollerId = null;
+// Sidebar filter tab: 'incomplete' or 'all'
+let sidebarTab = 'incomplete';
+const COMPLETED_STATUSES = new Set(['実装完了', '検証済み']);
+
+function planKey(project, feature) { return `${project}/${feature}`; }
+
+// --- Tab persistence ---
+function saveTabs() {
+  sessionStorage.setItem('viewer-tabs', JSON.stringify(tabs));
+  if (activeKey) sessionStorage.setItem('viewer-active', activeKey);
+}
+
+function restoreTabs() {
+  try {
+    const saved = sessionStorage.getItem('viewer-tabs');
+    if (saved) tabs = JSON.parse(saved);
+    activeKey = sessionStorage.getItem('viewer-active') || null;
+  } catch { /* ignore */ }
+}
 
 // --- Init ---
 async function init() {
   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' });
 
-  await refreshTabs();
+  restoreTabs();
+  await refreshAllPlans();
 
-  // Poll for plan list changes (new plans registered / plans finished)
-  planListPollerId = setInterval(refreshTabs, 3000);
-}
-
-async function refreshTabs() {
-  const res = await fetch('/api/plans');
-  const data = await res.json();
-  const newTabs = data.plans;
-
-  // Detect changes
-  const oldFeatures = new Set(tabs.map(t => t.feature));
-  const newFeatures = new Set(newTabs.map(t => t.feature));
-
-  tabs = newTabs;
-
-  // Initialize comment arrays and pollers for new tabs
-  for (const tab of tabs) {
-    if (!tabComments[tab.feature]) {
-      tabComments[tab.feature] = [];
-    }
-    if (!featurePollers[tab.feature]) {
-      startPlanPoller(tab.feature);
-    }
+  // Restore active tab
+  if (activeKey && tabs.find(t => t.key === activeKey)) {
+    await switchTab(activeKey);
   }
 
-  // Clean up removed tabs
-  for (const f of oldFeatures) {
-    if (!newFeatures.has(f)) {
-      delete tabComments[f];
-      if (featurePollers[f]) {
-        clearInterval(featurePollers[f].intervalId);
-        delete featurePollers[f];
-      }
+  // Poll for plan list changes
+  planListPollerId = setInterval(refreshAllPlans, 5000);
+}
+
+async function refreshAllPlans() {
+  const res = await fetch('/api/plans');
+  const data = await res.json();
+  allPlans = data.plans;
+
+  renderSidebar();
+
+  // Auto-add reviewing plans as tabs
+  for (const plan of allPlans) {
+    const key = planKey(plan.project, plan.feature);
+    if (plan.reviewing && !tabs.find(t => t.key === key)) {
+      tabs.push({ key, project: plan.project, feature: plan.feature, title: plan.title });
+      if (!tabComments[key]) tabComments[key] = [];
+      if (!featurePollers[key]) startPlanPoller(plan.project, plan.feature);
     }
   }
 
   renderTabBar();
 
-  // Auto-select first tab if no active tab or active tab was removed
-  if (!activeFeature || !newFeatures.has(activeFeature)) {
-    if (tabs.length > 0) {
-      switchTab(tabs[0].feature);
-    } else {
-      document.getElementById('content').innerHTML = '<div class="loading">全プランのレビューが完了しました。</div>';
+  // Auto-select first reviewing plan if nothing active
+  if (!activeKey) {
+    const reviewing = allPlans.find(p => p.reviewing);
+    if (reviewing) {
+      await openPlan(reviewing.project, reviewing.feature);
     }
   }
+}
+
+function switchSidebarTab(tab) {
+  sidebarTab = tab;
+  document.querySelectorAll('.sidebar-tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  renderSidebar();
+}
+
+// Track collapsed state per project
+const collapsedProjects = new Set();
+let collapsedInitialized = false;
+
+function renderSidebar() {
+  const list = document.getElementById('sidebarList');
+  list.innerHTML = '';
+
+  // Filter plans based on sidebar tab
+  const filteredPlans = sidebarTab === 'incomplete'
+    ? allPlans.filter(p => !COMPLETED_STATUSES.has(p.status))
+    : allPlans;
+
+  // Active plans section (reviewing plans across all projects)
+  const activePlans = allPlans.filter(p => p.reviewing);
+  if (activePlans.length > 0) {
+    const activeHeader = document.createElement('div');
+    activeHeader.className = 'sidebar-header';
+    activeHeader.textContent = 'Active';
+    list.appendChild(activeHeader);
+    for (const plan of activePlans) {
+      const item = createSidebarItem(plan, true, true);
+      list.appendChild(item);
+    }
+    const sep = document.createElement('hr');
+    sep.className = 'sidebar-separator';
+    list.appendChild(sep);
+  }
+
+  // Group by project
+  const projectMap = new Map();
+  for (const plan of filteredPlans) {
+    if (!projectMap.has(plan.project)) projectMap.set(plan.project, []);
+    projectMap.get(plan.project).push(plan);
+  }
+
+  // Initialize collapsed state once: collapse all except the one containing activeKey
+  if (!collapsedInitialized && projectMap.size > 1) {
+    collapsedInitialized = true;
+    const activeProject = activeKey ? activeKey.split('/')[0] : null;
+    for (const projectName of projectMap.keys()) {
+      if (projectName !== activeProject) {
+        collapsedProjects.add(projectName);
+      }
+    }
+  }
+
+  for (const [projectName, plans] of projectMap) {
+    const isCollapsed = collapsedProjects.has(projectName);
+
+    const group = document.createElement('div');
+    group.className = 'sidebar-project-group' + (isCollapsed ? ' collapsed' : '');
+
+    const header = document.createElement('div');
+    header.className = 'sidebar-project-header';
+    header.innerHTML = `<span><span class="toggle-arrow${isCollapsed ? ' collapsed' : ''}">▼</span>${escapeHtml(projectName)}</span><span class="badge">${plans.length}</span>`;
+    header.onclick = () => {
+      if (collapsedProjects.has(projectName)) {
+        collapsedProjects.delete(projectName);
+      } else {
+        collapsedProjects.add(projectName);
+      }
+      renderSidebar();
+    };
+    group.appendChild(header);
+
+    for (const plan of plans) {
+      group.appendChild(createSidebarItem(plan, plan.reviewing));
+    }
+
+    list.appendChild(group);
+  }
+}
+
+function createSidebarItem(plan, isReviewing, showProject = false) {
+  const key = planKey(plan.project, plan.feature);
+  const btn = document.createElement('button');
+  btn.className = 'sidebar-item' + (key === activeKey ? ' active' : '');
+  const projectLabel = showProject ? `<span class="project-label">${escapeHtml(plan.project)}</span>` : '';
+  btn.innerHTML = `${isReviewing ? '<span class="review-indicator">●</span>' : ''}${escapeHtml(plan.title || plan.feature)}${projectLabel}<span class="plan-status" data-status="${escapeHtml(plan.status || '')}">${escapeHtml(plan.status || '')}</span>`;
+  btn.title = plan.feature;
+  btn.onclick = () => openPlan(plan.project, plan.feature);
+  return btn;
+}
+
+async function openPlan(project, feature) {
+  const key = planKey(project, feature);
+  // Add to tabs if not already open
+  if (!tabs.find(t => t.key === key)) {
+    const plan = allPlans.find(p => p.project === project && p.feature === feature);
+    tabs.push({ key, project, feature, title: plan?.title || feature });
+    if (!tabComments[key]) tabComments[key] = [];
+    if (!featurePollers[key]) startPlanPoller(project, feature);
+  }
+  await switchTab(key);
+  renderSidebar();
+  saveTabs();
 }
 
 function renderTabBar() {
@@ -503,24 +933,60 @@ function renderTabBar() {
   bar.style.display = 'flex';
   for (const tab of tabs) {
     const el = document.createElement('button');
-    el.className = 'tab-item' + (tab.feature === activeFeature ? ' active' : '');
-    el.innerHTML = escapeHtml(tab.title || tab.feature);
-    el.onclick = () => switchTab(tab.feature);
+    el.className = 'tab-item' + (tab.key === activeKey ? ' active' : '');
+
+    const label = document.createElement('span');
+    label.textContent = tab.title || tab.feature;
+    label.onclick = () => switchTab(tab.key);
+    el.appendChild(label);
+
+    const closeBtn = document.createElement('span');
+    closeBtn.className = 'tab-close';
+    closeBtn.textContent = '\u00d7';
+    closeBtn.onclick = (e) => { e.stopPropagation(); closeTab(tab.key); };
+    el.appendChild(closeBtn);
+
     bar.appendChild(el);
   }
 }
 
-async function switchTab(feature) {
-  activeFeature = feature;
-  renderTabBar();
-  await loadPlan(feature);
-  updateCount();
+function closeTab(key) {
+  tabs = tabs.filter(t => t.key !== key);
+  if (featurePollers[key]) {
+    clearInterval(featurePollers[key].intervalId);
+    delete featurePollers[key];
+  }
+
+  if (activeKey === key) {
+    if (tabs.length > 0) {
+      switchTab(tabs[0].key);
+    } else {
+      activeKey = null;
+      renderTabBar();
+      renderSidebar();
+      document.getElementById('content').innerHTML = '<div class="loading">プランを選択してください</div>';
+    }
+  } else {
+    renderTabBar();
+  }
+  saveTabs();
 }
 
-async function loadPlan(feature) {
-  if (!feature) return;
+async function switchTab(key) {
+  activeKey = key;
+  renderTabBar();
+  renderSidebar();
+  const tab = tabs.find(t => t.key === key);
+  if (tab) await loadPlan(tab.project, tab.feature);
+  updateCount();
+  updateReviewUI();
+  saveTabs();
+}
 
-  const res = await fetch(`/api/plans/${feature}/plan`);
+async function loadPlan(project, feature) {
+  if (!project || !feature) return;
+
+  const res = await fetch(`/api/plans/${encodeURIComponent(project)}/${encodeURIComponent(feature)}/plan`);
   if (!res.ok) {
     document.getElementById('content').innerHTML = `<div class="loading">プラン "${feature}" の読み込みに失敗しました。</div>`;
     return;
@@ -555,32 +1021,88 @@ async function loadPlan(feature) {
   wrapSections();
 
   // Re-render existing comments for this tab
-  renderExistingComments(feature);
+  const key = planKey(project, feature);
+  renderExistingComments(key);
 
   // Hide spinner
   document.getElementById('spinnerArea').style.display = 'none';
   enableButtons();
 }
 
-function renderExistingComments(feature) {
-  const comments = tabComments[feature] || [];
-  // Re-add comment items to the DOM based on section headings
-  for (let i = 0; i < comments.length; i++) {
-    const c = comments[i];
-    const wrappers = document.querySelectorAll('.section-wrapper');
-    for (const wrapper of wrappers) {
-      const heading = wrapper.querySelector('h1, h2, h3');
-      if (heading && c.sectionHeading.endsWith(heading.textContent)) {
-        const item = document.createElement('div');
-        item.className = 'comment-item';
-        item.innerHTML = `
-          <button class="comment-delete" onclick="deleteComment(${i}, this)">&times;</button>
-          ${c.selectedText ? `<div class="selected-text">"${escapeHtml(c.selectedText).substring(0, 80)}"</div>` : ''}
-          <div>${escapeHtml(c.comment)}</div>
-        `;
-        heading.after(item);
-        break;
-      }
+function renderExistingComments(key) {
+  renderCommentPanel(key);
+}
+
+function renderCommentPanel(key) {
+  const panel = document.getElementById('commentPanel');
+  const body = document.getElementById('panelBody');
+  const countEl = document.getElementById('panelCount');
+  const comments = tabComments[key] || [];
+
+  body.innerHTML = '';
+
+  // Always show panel when a plan is open (for comment input)
+  if (!key) {
+    panel.classList.add('hidden');
+    countEl.textContent = '';
+    return;
+  }
+
+  countEl.textContent = comments.length > 0 ? `${comments.length}` : '';
+
+  // Group by sectionHeading
+  const groups = new Map();
+  comments.forEach((c, idx) => {
+    const heading = c.sectionHeading || '(no section)';
+    if (!groups.has(heading)) groups.set(heading, []);
+    groups.get(heading).push({ ...c, idx });
+  });
+
+  for (const [heading, items] of groups) {
+    const group = document.createElement('div');
+    group.className = 'panel-section-group';
+
+    const headingEl = document.createElement('div');
+    headingEl.className = 'panel-section-heading';
+    // Strip markdown heading prefix for display
+    headingEl.textContent = heading.replace(/^#+\s*/, '');
+    headingEl.onclick = () => scrollToSection(heading);
+    group.appendChild(headingEl);
+
+    for (const c of items) {
+      const item = document.createElement('div');
+      item.className = 'panel-comment-item';
+      item.innerHTML = `
+        <button class="panel-delete" onclick="deleteComment(${c.idx})">&times;</button>
+        ${c.selectedText ? `<div class="panel-quote">"${escapeHtml(c.selectedText).substring(0, 60)}"</div>` : ''}
+        <div>${escapeHtml(c.comment)}</div>
+      `;
+      group.appendChild(item);
+    }
+
+    body.appendChild(group);
+  }
+
+  countEl.textContent = `${comments.length}`;
+  panel.classList.remove('hidden');
+}
+
+function scrollToSection(sectionHeading) {
+  const headingText = sectionHeading.replace(/^#+\s*/, '');
+  const wrappers = document.querySelectorAll('.section-wrapper');
+  for (const wrapper of wrappers) {
+    const h = wrapper.querySelector('h1, h2, h3');
+    if (h && h.textContent === headingText) {
+      const container = document.querySelector('.main-area .container');
+      const rect = wrapper.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      container.scrollTo({ top: container.scrollTop + rect.top - containerRect.top - 16, behavior: 'smooth' });
+      // Highlight
+      wrapper.style.transition = 'background 0.3s';
+      wrapper.style.background = 'var(--bg-selection)';
+      wrapper.style.borderRadius = '4px';
+      setTimeout(() => { wrapper.style.background = ''; }, 1500);
+      break;
     }
   }
 }
@@ -684,13 +1206,7 @@ function wrapSections() {
     const wrapper = document.createElement('div');
     wrapper.className = 'section-wrapper';
 
-    const btn = document.createElement('button');
-    btn.className = 'comment-btn';
-    btn.textContent = '+';
-    btn.onclick = () => openCommentForm(wrapper, heading.textContent);
-
     heading.parentNode.insertBefore(wrapper, heading);
-    wrapper.appendChild(btn);
     wrapper.appendChild(heading);
 
     let next = wrapper.nextSibling;
@@ -699,37 +1215,46 @@ function wrapSections() {
       next = next.nextSibling;
       wrapper.appendChild(moved);
     }
-
-    const blocks = wrapper.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li, :scope > table, :scope > blockquote, :scope > pre');
-    blocks.forEach(block => {
-      const bw = document.createElement('div');
-      bw.className = 'block-wrapper';
-      block.parentNode.insertBefore(bw, block);
-      bw.appendChild(block);
-
-      const bbtn = document.createElement('button');
-      bbtn.className = 'block-comment-btn';
-      bbtn.textContent = '+';
-      bbtn.onclick = () => {
-        const blockText = block.textContent.trim().substring(0, 80);
-        openCommentForm(wrapper, heading.textContent, blockText);
-      };
-      bw.appendChild(bbtn);
-    });
   });
 }
 
-function openCommentForm(wrapper, sectionHeading, blockText) {
-  if (wrapper.querySelector('.comment-form')) return;
+function closeAllCommentForms() {
+  document.querySelectorAll('.comment-form').forEach(f => f.remove());
+}
+
+function addPanelComment() {
+  if (!activeKey) return;
+  const textarea = document.getElementById('panelTextarea');
+  const text = textarea.value.trim();
+  if (!text) return;
+
+  const comment = { sectionHeading: '(全体)', selectedText: undefined, comment: text };
+  if (!tabComments[activeKey]) tabComments[activeKey] = [];
+  tabComments[activeKey].push(comment);
+
+  textarea.value = '';
+  renderCommentPanel(activeKey);
+  updateCount();
+}
+
+function openCommentForm(wrapper, sectionHeading, blockText, selectionRect) {
+  // Close any existing inline form (single form policy)
+  closeAllCommentForms();
 
   const selectedText = blockText || window.getSelection().toString().trim();
 
   const form = document.createElement('div');
-  form.className = 'comment-form';
+  form.className = 'comment-form floating';
+
+  // Store section info on the form element for addComment
+  const heading = wrapper?.querySelector('h1, h2, h3');
+  const prefix = heading ? '#'.repeat(parseInt(heading.tagName[1])) + ' ' : '## ';
+  form.dataset.sectionHeading = `${prefix}${sectionHeading}`;
+  form.dataset.selectedText = selectedText || '';
 
   let selectedHtml = '';
   if (selectedText) {
-    selectedHtml = `<div class="selected-text">選択: "${selectedText.substring(0, 100)}${selectedText.length > 100 ? '...' : ''}"</div>`;
+    selectedHtml = `<div class="selected-text">"${escapeHtml(selectedText).substring(0, 100)}${selectedText.length > 100 ? '...' : ''}"</div>`;
   }
 
   form.innerHTML = `
@@ -737,55 +1262,48 @@ function openCommentForm(wrapper, sectionHeading, blockText) {
     <textarea placeholder="コメントを入力..."></textarea>
     <div class="form-actions">
       <button class="btn btn-secondary" onclick="this.closest('.comment-form').remove()">キャンセル</button>
-      <button class="btn btn-primary" onclick="addComment(this, '${sectionHeading.replace(/'/g, "\\'")}', '${(selectedText || '').replace(/'/g, "\\'")}')">追加</button>
+      <button class="btn btn-primary" onclick="addCommentFromForm(this)">追加</button>
     </div>
   `;
 
-  const heading = wrapper.querySelector('h1, h2, h3');
-  heading.after(form);
+  // Position as floating overlay below the selection
+  if (selectionRect) {
+    form.style.left = `${selectionRect.left}px`;
+    form.style.top = `${selectionRect.bottom + 4}px`;
+  }
+
+  document.body.appendChild(form);
   form.querySelector('textarea').focus();
 }
 
-function addComment(btn, sectionHeading, selectedText) {
-  if (!activeFeature) return;
-
+function addCommentFromForm(btn) {
+  if (!activeKey) return;
   const form = btn.closest('.comment-form');
-  const textarea = form.querySelector('textarea');
-  const text = textarea.value.trim();
+  const text = form.querySelector('textarea').value.trim();
   if (!text) return;
 
-  const heading = form.closest('.section-wrapper').querySelector('h1, h2, h3');
-  const prefix = heading ? '#'.repeat(parseInt(heading.tagName[1])) + ' ' : '## ';
-  const comment = { sectionHeading: `${prefix}${sectionHeading}`, selectedText: selectedText || undefined, comment: text };
+  const sectionHeading = form.dataset.sectionHeading || '(全体)';
+  const selectedText = form.dataset.selectedText || undefined;
+  const comment = { sectionHeading, selectedText, comment: text };
 
-  if (!tabComments[activeFeature]) tabComments[activeFeature] = [];
-  tabComments[activeFeature].push(comment);
+  if (!tabComments[activeKey]) tabComments[activeKey] = [];
+  tabComments[activeKey].push(comment);
 
-  const comments = tabComments[activeFeature];
-  const idx = comments.length - 1;
-  const item = document.createElement('div');
-  item.className = 'comment-item';
-  item.innerHTML = `
-    <button class="comment-delete" onclick="deleteComment(${idx}, this)">&times;</button>
-    ${selectedText ? `<div class="selected-text">"${selectedText.substring(0, 80)}${selectedText.length > 80 ? '...' : ''}"</div>` : ''}
-    <div>${escapeHtml(text)}</div>
-  `;
-  form.replaceWith(item);
+  form.remove();
+  renderCommentPanel(activeKey);
   updateCount();
 }
 
-function deleteComment(idx, btn) {
-  if (!activeFeature) return;
-  tabComments[activeFeature].splice(idx, 1);
-  btn.closest('.comment-item').remove();
+
+function deleteComment(idx) {
+  if (!activeKey) return;
+  tabComments[activeKey].splice(idx, 1);
+  renderCommentPanel(activeKey);
   updateCount();
-  document.querySelectorAll('.comment-item .comment-delete').forEach((b, i) => {
-    b.onclick = () => deleteComment(i, b);
-  });
 }
 
 function updateCount() {
-  const comments = tabComments[activeFeature] || [];
+  const comments = tabComments[activeKey] || [];
   const el = document.getElementById('commentCount');
   const submitBtn = document.getElementById('submitBtn');
 
@@ -800,7 +1318,7 @@ function updateCount() {
 }
 
 function enableButtons() {
-  document.getElementById('submitBtn').disabled = !(tabComments[activeFeature]?.length > 0);
+  document.getElementById('submitBtn').disabled = !(tabComments[activeKey]?.length > 0);
   document.getElementById('finishBtn').disabled = false;
 }
 
@@ -816,67 +1334,58 @@ function escapeHtml(s) {
 }
 
 async function submitComments() {
-  if (!activeFeature) return;
-  const comments = tabComments[activeFeature] || [];
+  if (!activeKey) return;
+  const comments = tabComments[activeKey] || [];
   if (comments.length === 0) return;
+
+  const tab = tabs.find(t => t.key === activeKey);
+  if (!tab) return;
 
   disableButtons();
   document.getElementById('spinnerArea').style.display = 'block';
 
-  await fetch(`/api/plans/${activeFeature}/comments`, {
+  await fetch(`/api/plans/${encodeURIComponent(tab.project)}/${encodeURIComponent(tab.feature)}/comments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ comments })
   });
 
   // Clear comments for this tab
-  tabComments[activeFeature] = [];
+  tabComments[activeKey] = [];
   updateCount();
 }
 
 async function finishReview() {
-  if (!activeFeature) return;
+  if (!activeKey) return;
 
-  await fetch(`/api/plans/${activeFeature}/finish`, {
+  const tab = tabs.find(t => t.key === activeKey);
+  if (!tab) return;
+
+  await fetch(`/api/plans/${encodeURIComponent(tab.project)}/${encodeURIComponent(tab.feature)}/finish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   });
 
-  // Remove this tab
-  delete tabComments[activeFeature];
-  if (featurePollers[activeFeature]) {
-    clearInterval(featurePollers[activeFeature].intervalId);
-    delete featurePollers[activeFeature];
-  }
+  // Refresh plan list to update reviewing status
+  await refreshAllPlans();
 
-  const removedFeature = activeFeature;
-  tabs = tabs.filter(t => t.feature !== removedFeature);
-
-  if (tabs.length > 0) {
-    activeFeature = tabs[0].feature;
-    renderTabBar();
-    await loadPlan(activeFeature);
-    updateCount();
-  } else {
-    activeFeature = null;
-    renderTabBar();
-    document.getElementById('content').innerHTML = '<div class="loading">レビュー完了しました。このタブを閉じてください。</div>';
-    document.getElementById('commentCount').style.display = 'none';
-    disableButtons();
-  }
+  // Update UI for current plan (now read-only)
+  updateReviewUI();
 }
 
-function startPlanPoller(feature) {
+function startPlanPoller(project, feature) {
+  const key = planKey(project, feature);
   const state = { intervalId: null, lastModified: null };
 
   state.intervalId = setInterval(async () => {
     try {
-      const res = await fetch(`/api/plans/${feature}/status`);
+      const res = await fetch(`/api/plans/${encodeURIComponent(project)}/${encodeURIComponent(feature)}/status`);
       if (!res.ok) return;
       const data = await res.json();
       if (state.lastModified !== null && data.lastModified > state.lastModified) {
-        if (feature === activeFeature) {
-          await loadPlan(feature);
+        if (key === activeKey) {
+          const tab = tabs.find(t => t.key === key);
+          if (tab) await loadPlan(tab.project, tab.feature);
           updateCount();
         }
       }
@@ -886,7 +1395,52 @@ function startPlanPoller(feature) {
     }
   }, 3000);
 
-  featurePollers[feature] = state;
+  featurePollers[key] = state;
+}
+
+// Find the nearest section heading for a given node inside #content
+function findNearestSection(node) {
+  const el = node.nodeType === 3 ? node.parentElement : node;
+  // Check if inside a section-wrapper
+  const wrapper = el?.closest?.('.section-wrapper');
+  if (wrapper) {
+    const heading = wrapper.querySelector('h1, h2, h3');
+    return { wrapper, heading };
+  }
+  // Fallback: find the closest preceding heading
+  const content = document.getElementById('content');
+  if (!content?.contains(el)) return null;
+  const allHeadings = [...content.querySelectorAll('h1, h2, h3')];
+  let nearest = null;
+  for (const h of allHeadings) {
+    if (el.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_PRECEDING) {
+      nearest = h;
+    }
+  }
+  if (nearest) {
+    return { wrapper: nearest.closest('.section-wrapper'), heading: nearest };
+  }
+  return { wrapper: null, heading: null };
+}
+
+// Find the nearest block-level element for insertion
+function findInsertionAnchor(node) {
+  const el = node.nodeType === 3 ? node.parentElement : node;
+  const blockTags = new Set(['P', 'LI', 'BLOCKQUOTE', 'PRE', 'TABLE', 'UL', 'OL', 'DIV']);
+  let current = el;
+  const content = document.getElementById('content');
+  // If inside a table, use the table element as anchor
+  const table = el.closest?.('table');
+  if (table && content.contains(table)) {
+    return table;
+  }
+  while (current && current !== content) {
+    if (blockTags.has(current.tagName) && current.parentElement?.closest?.('.section-wrapper')) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+  return null;
 }
 
 // Selection-based comment tooltip
@@ -895,27 +1449,34 @@ document.addEventListener('mouseup', () => {
   const sel = window.getSelection();
   const text = sel.toString().trim();
 
-  if (!text || text.length < 2) {
+  // Hide tooltip if no active plan or no selection
+  if (!activeKey || !text || text.length < 2) {
     tooltip.style.display = 'none';
     return;
   }
 
   const anchorNode = sel.anchorNode;
-  const wrapper = anchorNode?.parentElement?.closest?.('.section-wrapper');
-  if (!wrapper) {
+  const content = document.getElementById('content');
+  if (!content?.contains(anchorNode)) {
     tooltip.style.display = 'none';
     return;
   }
 
   const range = sel.getRangeAt(0);
   const rect = range.getBoundingClientRect();
+  const container = document.querySelector('.main-area .container');
   tooltip.style.display = 'block';
   tooltip.style.left = `${rect.left + rect.width / 2 - 50}px`;
-  tooltip.style.top = `${rect.top + window.scrollY - 32}px`;
+  tooltip.style.top = `${rect.top - 36}px`;
+
+  // Capture rect now since selection may be lost on click
+  const selRect = { left: rect.left, top: rect.top, bottom: rect.bottom, right: rect.right };
 
   tooltip.onclick = () => {
-    const heading = wrapper.querySelector('h1, h2, h3');
-    if (heading) openCommentForm(wrapper, heading.textContent);
+    const section = findNearestSection(anchorNode);
+    const sectionHeading = section?.heading?.textContent || '(全体)';
+    const wrapper = section?.wrapper;
+    openCommentForm(wrapper, sectionHeading, null, selRect);
     tooltip.style.display = 'none';
   };
 });
@@ -923,6 +1484,27 @@ document.addEventListener('mouseup', () => {
 document.addEventListener('mousedown', (e) => {
   if (e.target.id !== 'selectionTooltip') {
     document.getElementById('selectionTooltip').style.display = 'none';
+  }
+});
+
+function updateReviewUI() {
+  const tab = tabs.find(t => t.key === activeKey);
+  const plan = tab ? allPlans.find(p => p.project === tab.project && p.feature === tab.feature) : null;
+  const isReviewing = plan?.reviewing || false;
+  const hasActiveTab = !!tab;
+  // Submit button: always visible when a plan is open
+  document.getElementById('submitBtn').style.display = hasActiveTab ? '' : 'none';
+  // Finish button: only during annotation-cycle review
+  document.getElementById('finishBtn').style.display = isReviewing ? '' : 'none';
+  // Re-render panel
+  if (activeKey) renderCommentPanel(activeKey);
+}
+
+// Close floating comment form when clicking outside
+document.addEventListener('mousedown', (e) => {
+  const form = document.querySelector('.comment-form.floating');
+  if (form && !form.contains(e.target) && e.target.id !== 'selectionTooltip') {
+    form.remove();
   }
 });
 

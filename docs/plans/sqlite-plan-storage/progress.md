@@ -2,7 +2,7 @@
 plan: "./plan.md"
 feature: "sqlite-plan-storage"
 started: 2026-03-14
-updated: 2026-03-14
+updated: 2026-03-16
 mode: multi-pr
 repositories:
   - name: "spec-driven-dev"
@@ -18,35 +18,36 @@ docs:
 
 ## 現在の状況
 
-plan.md と progress.md を作成した段階。まだ実装には着手していない。
+全 PR（PR1〜PR5）の実装が完了。全 20 プランの DB マイグレーションも成功。
 
 ## 次にやること
 
-PR1（DB 基盤 + db.sh コア実装）のタスク #1 から着手する。`migrations/0001_initial_schema.sql` を作成し、`scripts/db.sh` の migrate サブコマンドを実装する。
+動作確認と /check での仕様検証。
 
 ## タスク進捗
 
 | # | タスク | 対象ファイル | 見積 | PR | リスク | 状態 |
 |---|-------|------------|------|-----|--------|------|
-| 1 | DB スキーマ設計 + マイグレーション基盤（projects テーブル含む） | `migrations/0001_initial_schema.sql`, `scripts/db.sh` | M | PR1 | 低 | - |
-| 2 | db.sh コア実装（プロジェクト管理 + plan CRUD + body 操作） | `scripts/db.sh` | L | PR1 | 中 | - |
-| 3 | db.sh タスク操作 | `scripts/db.sh` | M | PR1 | 低 | - |
-| 4 | db.sh 結果・リサーチ・デバッグ操作 | `scripts/db.sh` | M | PR1 | 低 | - |
-| 5 | db.sh リレーション操作 | `scripts/db.sh` | S | PR1 | 低 | - |
-| 20 | db.sh progress 操作（update-progress, get-progress） | `scripts/db.sh` | M | PR1 | 低 | - |
-| 7 | 既存 md -> DB マイグレーションスクリプト | `scripts/migrate-md-to-db.sh` | L | PR2 | 高 | - |
-| 8 | /list スキル書き換え | `skills/list/SKILL.md` | M | PR3 | 中 | - |
-| 9 | /spec スキル書き換え | `skills/spec/SKILL.md` | M | PR3 | 中 | - |
-| 10 | /build スキル書き換え | `skills/build/SKILL.md` | M | PR3 | 低 | - |
-| 11 | /check スキル書き換え | `skills/check/SKILL.md` | S | PR3 | 低 | - |
-| 12 | /fix スキル書き換え | `skills/fix/SKILL.md` | S | PR3 | 低 | - |
-| 13 | /research スキル書き換え | `skills/research/SKILL.md` | S | PR3 | 低 | - |
-| 14 | writer エージェント書き換え | `agents/writer/writer.md`, `agents/writer/references/formats/` | L | PR4 | 高 | - |
-| 15 | verifier エージェント書き換え | `agents/verifier/verifier.md` | S | PR4 | 低 | - |
-| 16 | analyzer エージェント書き換え | `agents/analyzer/analyzer.md` | S | PR4 | 低 | - |
-| 17 | Annotation Viewer DB 対応 | `scripts/annotation-viewer/server.py` | M | PR5 | 中 | - |
-| 18 | ルール更新 | `.claude/rules/plugin-structure.md` | S | PR5 | 低 | - |
-| 19 | 既存 19 プランのマイグレーション実行 + 動作確認 | - | M | PR5 | 高 | - |
+| 1 | DB スキーマ設計 + マイグレーション基盤（projects テーブル含む） | `migrations/0001_initial_schema.sql`, `scripts/db.sh` | M | PR1 | 低 | ✓ |
+| 2 | db.sh コア実装（プロジェクト管理 + plan CRUD + body 操作） | `scripts/db.sh` | L | PR1 | 中 | ✓ |
+| 3 | db.sh タスク操作 | `scripts/db.sh` | M | PR1 | 低 | ✓ |
+| 4 | db.sh 結果・リサーチ・デバッグ操作 | `scripts/db.sh` | M | PR1 | 低 | ✓ |
+| 5 | db.sh リレーション操作 | `scripts/db.sh` | S | PR1 | 低 | ✓ |
+| 20 | db.sh progress 操作（update-progress, get-progress） | `scripts/db.sh` | M | PR1 | 低 | ✓ |
+| 7 | 既存 md -> DB マイグレーションスクリプト | `scripts/migrate-md-to-db.sh` | L | PR2 | 高 | ✓ |
+| 8 | /list スキル書き換え | `skills/list/SKILL.md` | M | PR3 | 中 | ✓ |
+| 9 | /spec スキル書き換え | `skills/spec/SKILL.md` | M | PR3 | 中 | ✓ |
+| 10 | /build スキル書き換え | `skills/build/SKILL.md` | M | PR3 | 低 | ✓ |
+| 11 | /check スキル書き換え | `skills/check/SKILL.md` | S | PR3 | 低 | ✓ |
+| 12 | /fix スキル書き換え | `skills/fix/SKILL.md` | S | PR3 | 低 | ✓ |
+| 13 | /research スキル書き換え | `skills/research/SKILL.md` | S | PR3 | 低 | ✓ |
+| 14 | writer エージェント書き換え | `agents/writer/writer.md`, `agents/writer/references/formats/` | L | PR4 | 高 | ✓ |
+| 15 | verifier エージェント書き換え | `agents/verifier/verifier.md` | S | PR4 | 低 | ✓ |
+| 16 | analyzer エージェント書き換え | `agents/analyzer/analyzer.md` | S | PR4 | 低 | ✓ |
+| 21 | researcher エージェント書き換え | `agents/researcher/researcher.md` | S | PR4 | 低 | ✓ |
+| 17 | Annotation Viewer DB 対応 | `scripts/annotation-viewer/server.py` | M | PR5 | 中 | ✓ |
+| 18 | ルール更新 | `.claude/rules/plugin-structure.md` | S | PR5 | 低 | ✓ |
+| 19 | 既存 20 プランのマイグレーション実行 + 動作確認 | - | M | PR5 | 高 | ✓ |
 
 > タスク定義の詳細は [plan.md](./plan.md) を参照
 
@@ -59,7 +60,7 @@ PR1（DB 基盤 + db.sh コア実装）のタスク #1 から着手する。`mig
 | PR1 | #1-#5, #20 | DB 基盤 + db.sh コア実装（プロジェクト管理 + progress 操作含む） | - |
 | PR2 | #7 | マイグレーションスクリプト + 既存データ移行 | PR1 |
 | PR3 | #8-#13 | 全スキル書き換え | PR1 |
-| PR4 | #14-#16 | エージェント書き換え | PR1 |
+| PR4 | #14-#16, #21 | エージェント書き換え | PR1 |
 | PR5 | #17-#19 | Annotation Viewer + ルール更新 + 最終確認 | PR1, PR2 |
 
 ### 依存関係図
@@ -104,3 +105,4 @@ graph LR
 | 日時 | 内容 |
 |------|------|
 | 2026-03-14 | plan.md, progress.md 作成 |
+| 2026-03-16 | plan.md 更新: researcher エージェント追加（タスク #21）、既存プラン数 19→20、関連プラン追加（sse-annotation-cycle, wider-annotation-viewer） |

@@ -1,7 +1,7 @@
 # spec-flow
 
 A lightweight spec-driven development plugin for Claude Code.
-Guides you from requirements hearing through design, implementation, and verification with 5 skills centered around `plan.md`.
+Guides you from requirements hearing through design, implementation, and verification with 5 skills centered around plan stored in SQLite DB.
 
 ## Install
 
@@ -25,17 +25,17 @@ list can be invoked at any time as a navigation hub
 | Step | Skill | Role |
 |------|-------|------|
 | - | `/spec-flow:list` | Displays all plans with status and lets you navigate to any skill |
-| 0 | `/spec-flow:research` | Technical investigation → research.md generation. Supports codebase analysis and web research |
-| 1 | `/spec-flow:spec` | Requirements hearing → integrated analysis → direction confirmation → plan.md generation → browser review (Annotation Cycle) → progress.md generation |
-| 2 | `/spec-flow:build` | Branch creation → task-by-task implementation → build verification → PR creation, all guided by plan.md |
-| 3 | `/spec-flow:check` | Compares implementation code against plan.md and reports PASS / PARTIAL / NEEDS_FIX |
+| 0 | `/spec-flow:research` | Technical investigation → research generation. Supports codebase analysis and web research |
+| 1 | `/spec-flow:spec` | Requirements hearing → integrated analysis → direction confirmation → plan generation → browser review (Annotation Cycle) → progress generation |
+| 2 | `/spec-flow:build` | Branch creation → task-by-task implementation → build verification → PR creation, all guided by plan |
+| 3 | `/spec-flow:check` | Compares implementation code against plan and reports PASS / PARTIAL / NEEDS_FIX |
 | - | `/spec-flow:fix` | Root cause investigation with no speculative fixes allowed. Supports feature mode and standalone mode |
 
 ## Skills
 
 ### list
 
-Displays all plans under `docs/plans/` with status (in progress / not started / spec only / completed / verified) and lets you select a plan to edit, build, research, or check. Plans are sorted by priority — in-progress and not-started plans appear first. Supports pagination for large plan lists.
+Displays all plans in DB with status (in progress / not started / spec only / completed / verified) and lets you select a plan to edit, build, research, or check. Plans are sorted by priority — in-progress and not-started plans appear first. Supports pagination for large plan lists.
 
 ```
 /spec-flow:list
@@ -44,32 +44,30 @@ Displays all plans under `docs/plans/` with status (in progress / not started / 
 ### spec
 
 Completes everything from requirements hearing to technical design and implementation planning in a single command.
-Supports new mode (plan.md generation) and update mode (plan.md update from check results or additional requirements).
-Also generates progress.md for task tracking (single mode for small/medium, multi-pr mode for large features).
+Supports new mode (plan generation) and update mode (plan update from check results or additional requirements).
+Also generates progress (task tracking) for single mode or multi-pr mode.
 
 ```
-(research) → hearing → analysis → direction confirmation → plan.md generation
-               → Annotation Cycle (browser review) → progress.md generation
+(research) → hearing → analysis → direction confirmation → plan generation
+               → Annotation Cycle (browser review) → progress generation
 ```
 
-After plan.md generation, offers an **Annotation Cycle** — a browser-based review loop:
+After plan generation, offers an **Annotation Cycle** — a browser-based review loop:
 
-1. A local server starts and opens the browser with the rendered plan.md
+1. A local server starts and opens the browser with the rendered plan
 2. You add comments to sections, paragraphs, or selected text
-3. Click "submit comments" → writer agent auto-revises plan.md
-4. Browser re-opens with updated plan.md — repeat until satisfied
+3. Click "submit comments" → writer agent auto-revises plan
+4. Browser re-opens with updated plan — repeat until satisfied
 5. Click "review complete (no changes)" → cycle ends
 
 ```
 /spec-flow:spec add user notification feature
 ```
 
-**Output**: `docs/plans/{feature-name}/plan.md` + `progress.md`
-
 ### build
 
-Implements features guided by plan.md. Covers branch creation → task-by-task coding → build verification → PR creation.
-Supports pause/resume via progress.md state tracking.
+Implements features guided by plan. Covers branch creation → task-by-task coding → build verification → PR creation.
+Supports pause/resume via DB task state tracking.
 Detects spec gaps during implementation and prompts for spec update.
 
 ```
@@ -78,8 +76,8 @@ Detects spec gaps during implementation and prompts for spec update.
 
 ### check
 
-Reads implementation code directly and detects deviations from plan.md bidirectionally.
-Reports results as PASS (all conditions met) / PARTIAL (minor mismatches) / NEEDS_FIX (significant mismatches), generating result.md.
+Reads implementation code directly and detects deviations from plan bidirectionally.
+Reports results as PASS (all conditions met) / PARTIAL (minor mismatches) / NEEDS_FIX (significant mismatches), generating result.
 On NEEDS_FIX, proposes spec update to close the loop.
 
 ```
@@ -89,7 +87,7 @@ On NEEDS_FIX, proposes spec update to close the loop.
 ### fix
 
 Prohibits speculative fixes and traces actual execution flows to identify root causes before proposing a fix.
-Operates in feature mode (with plan.md for spec correlation) or standalone mode (without plan.md).
+Operates in feature mode (with plan for spec correlation) or standalone mode (without plan).
 
 ```
 /spec-flow:fix describe the error symptoms
@@ -98,14 +96,16 @@ Operates in feature mode (with plan.md for spec correlation) or standalone mode 
 ### research
 
 Investigates technical topics through codebase analysis and web research.
-Outputs research.md with findings, comparisons, and recommendations.
+Outputs research with findings, comparisons, and recommendations.
 Results are automatically detected by `/spec` when creating a new spec.
 
 ```
 /spec-flow:research authentication patterns for this project
 ```
 
-**Output**: `docs/plans/{feature-name}/research.md`
+## Data Storage
+
+All plan data is stored in SQLite DB (`~/.claude/spec-flow.db`) managed via `scripts/db.sh`.
 
 ## Architecture
 
@@ -115,20 +115,16 @@ skills/          ← User-facing entry points (orchestration)
 
 agents/          ← Backend agents invoked via Task()
   analyzer/      ← Project-wide integrated analysis
-  writer/        ← plan.md / progress.md / result.md generation
+  writer/        ← plan / progress / result generation (DB storage)
   verifier/      ← Spec vs implementation comparison
   researcher/    ← Technical investigation
 
 scripts/         ← Utility scripts
-  annotation-viewer/  ← Browser-based plan.md review server
+  db.sh          ← DB operations (plan CRUD, task management, etc.)
+  annotation-viewer/  ← Browser-based plan review server
+  migrate-md-to-db.sh ← Migration from legacy md files to DB
 
-docs/plans/      ← All artifacts per feature
-  {feature-name}/
-    ├── plan.md
-    ├── progress.md
-    ├── result.md
-    ├── research.md
-    └── debug-*.md
+migrations/      ← SQL schema definitions
 ```
 
 ## Marketplace
